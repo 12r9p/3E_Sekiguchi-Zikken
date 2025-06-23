@@ -159,41 +159,38 @@ def try_flush(api):
 
 # ============== メインループ ================
 
-def main():
-    api = dType.load()
-    init_dobot(api)
 
-    # ホーム → safe_z で待機
-    h_pose = dType.GetPose(api)
-    move_to(api, h_pose[0], h_pose[1], CONFIG['safe_z'])
+api = dType.load()
+init_dobot(api)
 
-    gp = CONFIG['grab_pos']
-    wait_z = CONFIG['sensor_pos']['z']  # 常時待機する高さ(センサより上推奨)
+# ホーム → safe_z で待機
+h_pose = dType.GetPose(api)
+move_to(api, h_pose[0], h_pose[1], CONFIG['safe_z'])
 
-    print("=== Sorting Loop Start ===")
-    while True:
-        if dType.GetInfraredSensor(api, 1)[0]:
-            # ① 把持
-            move_xy_then_z(api, gp['x'], gp['y'], gp['z'])
-            pick_block(api)
-            # ② 色測定
-            color = measure_color(api)
-            print(f"Detected: {color}")
-            # ③ 直接本置き可能か判定
-            placed = False
-            for col_idx, seq in enumerate(NEXT_SEQ):
-                if place_cnt[col_idx] < len(seq) and seq[place_cnt[col_idx]] == color:
-                    place_to_column(api, color, col_idx)
-                    placed = True
-                    break
-            # ④ 直接置けない→バッファ
-            if not placed:
-                stash_in_buffer(api, color)
-            # ⑤ バッファ掃き出し
-            try_flush(api)
-            # ⑥ 待機位置へ
-            move_xy_then_z(api, gp['x'], gp['y'], wait_z)
-        time.sleep(0.05)
+gp = CONFIG['grab_pos']
+wait_z = CONFIG['sensor_pos']['z']  # 常時待機する高さ(センサより上推奨)
 
-if __name__ == '__main__':
-    main()
+print("=== Sorting Loop Start ===")
+while True:
+    if dType.GetInfraredSensor(api, 1)[0]:
+        # ① 把持
+        move_xy_then_z(api, gp['x'], gp['y'], gp['z'])
+        pick_block(api)
+        # ② 色測定
+        color = measure_color(api)
+        print(color)
+        # ③ 直接本置き可能か判定
+        placed = False
+        for col_idx, seq in enumerate(NEXT_SEQ):
+            if place_cnt[col_idx] < len(seq) and seq[place_cnt[col_idx]] == color:
+                place_to_column(api, color, col_idx)
+                placed = True
+                break
+        # ④ 直接置けない→バッファ
+        if not placed:
+            stash_in_buffer(api, color)
+        # ⑤ バッファ掃き出し
+        try_flush(api)
+        # ⑥ 待機位置へ
+        move_xy_then_z(api, gp['x'], gp['y'], wait_z)
+    time.sleep(0.05)
