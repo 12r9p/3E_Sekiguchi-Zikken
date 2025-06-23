@@ -2,223 +2,214 @@ import DobotDLL as dType
 import time
 
 """
-流れの概要
------------
-1. **待機** ：把持位置 (grab_pos) の Z 座標 +10 mm でフォトセンサ待ち
-2. **下降** ：フォトセンサがオンになったら 50 ms 待機 → 把持高さへ降下
-3. **把持** ：吸着カップ ON でブロックを吸着
-4. **上昇** ：クリアランス高さ (clearance_z) までリフト
-5. **水平移動** ：カラーセンサの真上 (clearance_z 面) まで水平移動
-6. **色判定** ：センサ高さへ降下し RGB を読み取り → R/G/B を決定
-7. **配置 or バッファ** ：
-   * 該当列で今すぐ必要な色ならその列へプレース
-   * 必要でなければ色別バッファへ一時格納
-8. **バッファ掃き出し** ：列が次に必要とする色がバッファにあれば取り出して配置
+Dobot Magician – 色分別ロボットアーム制御スクリプト（完全版）
+===================================================================
+このスクリプトは 15 mm 角ブロックをカラーセンサで識別し，
+Dobot Magician が 2 列（列0 = 青→緑→赤，列1 = 青→赤）に
+自動で積み上げるデモです。
+
+* **把持** と **センサ移動** は高速な **MOVJ(PTP)**。
+* **配置／格納／取り出し** は干渉回避のため **MOVL(直線補間)**。
+* パラメータは `CONFIG` に一元化。速度や座標を現場に合わせて調整。
+
+動作シーケンス
+----------------
+1. `wait_for_block`   : 把持位置上空でフォトセンサ待機
+2. `pick_block`      : 降下→吸着→安全高さへ上昇
+3. `measure_color`   : センサ上空へ水平移動→降下→RGB 取得
+4. `place / stash`   : 置き列に直接プレース or バッファ格納
+5. `flush`           : バッファから必要な色を回収して列に補充
 """
 
-# -------------------- ユーザ設定 --------------------
+# ==================================================
+# CONFIG
+# ==================================================
 CONFIG = {
-    # --- 基本座標 ---
-    'grab_pos':    {'x': 252.5, 'y': 130.0,  'z': 14.4},   # 把持
-    'sensor_pos':  {'x': 191.3, 'y': 112.6, 'z': 25.1},   # カラーセンサ真上
-    'buffer_base': {
+    # --- 座標 (mm) -----------------------------------------------
+    'grab_pos':    {'x': 252.5, 'y': 130.0,  'z': 14.4},   # ブロック吸着中心
+    'sensor_pos':  {'x': 191.3, 'y': 112.6, 'z': 25.1},   # カラーセンサ直上
+    'buffer_base': {                                         # 色別バッファ起点
         'R': {'x': 300.0, 'y': -65.0, 'z': -42.0},
         'G': {'x': 260.0, 'y': -65.0, 'z': -42.0},
         'B': {'x': 220.0, 'y': -65.0, 'z': -42.0},
     },
-    'place_base':  {'x': 200.0, 'y': -150.0, 'z': -42.0},
+    'place_base':  {'x': 200.0, 'y': -150.0, 'z': -42.0},  # 完成列起点
 
-    # --- 間隔・高さ ---
-    'buffer_interval_y': 20.0,
-    'buffer_interval_z': 15.0,
-    'place_interval_y':  45.0,
-    'place_interval_z':  15.0,
-    'clearance_z':       50.0,   # XY 移動高さ
-    'approach_offset_z': 10.0,   # 把持前退避 +Z
+    # --- 幾何パラメータ -------------------------------------------
+    'buffer_interval_y': 20.0,  # バッファ列間中心距離
+    'buffer_interval_z': 15.0,  # ブロック高さ
+    'place_interval_y':  45.0,  # 積み列間隔
+    'place_interval_z':  15.0,  # ブロック高さ
 
-    # --- 速度パラメータ (1–100 %) ---
-    'ptp_vel_pct': 50,  # PTP 速度
-    'ptp_acc_pct': 50,  # PTP 加速度
+    'clearance_z':       50,  # XY 移動時の安全高さ
+    'approach_offset_z': 10.0,  # 把持前に +Z 待機する量
 
-    # --- タイミング ---
+    # --- 速度 (% 指定) --------------------------------------------
+    'ptp_vel_pct': 50,  # MOVJ 速度
+    'ptp_acc_pct': 50,  # MOVJ 加速度
+    'cp_vel_pct':  40,  # MOVL 速度
+    'cp_acc_pct':  40,  # MOVL 加速度
+
+    # --- タイミング ------------------------------------------------
     'ir_pause': 0.05,   # フォトセンサ反応後の待機 [s]
 }
-C = CONFIG  # 省略用
-
-# ---------- 内部状態 ----------
-buffer_cnt = {'R': 0, 'G': 0, 'B': 0}
-place_cnt  = [0, 0]
-NEXT_SEQ   = [['B','G','R'], ['B','R']]
+C = CONFIG  # ショートネーム
 
 # ==================================================
-#  Dobot 初期化処理
+# 実行時に変化するグローバル状態
+# ==================================================
+buffer_cnt = {'R': 0, 'G': 0, 'B': 0}   # 色別バッファ在庫数
+place_cnt  = [0, 0]                      # 列ごとの積層段数
+NEXT_SEQ   = [['B', 'G', 'R'],           # 列0 の目標シーケンス
+              ['B', 'R']]               # 列1 の目標シーケンス
+
+
+# ==================================================
+# Dobot 初期化
 # ==================================================
 
-def init_dobot(api) -> None:
-    """Dobot Magician の初期設定。
-    CONFIG の `ptp_vel_pct` / `ptp_acc_pct` をそのまま速度に使用。"""
-    # エンドエフェクタパラメータ
+def init_dobot(api):
     dType.SetEndEffectorParamsEx(api, 59.7, 0, 0, 1)
-    # センサ有効化
     dType.SetColorSensor(api, 1, 2, 1)
     dType.SetInfraredSensor(api, 1, 1, 1)
-    time.sleep(0.3)
-    # PTP 共通速度を CONFIG から設定
+    time.sleep(0.2)
     dType.SetPTPCommonParamsEx(api, C['ptp_vel_pct'], C['ptp_acc_pct'], 1)
+    try:
+        dType.SetCPParamsEx(api, C['cp_vel_pct'], C['cp_acc_pct'], 1)
+    except AttributeError:
+        pass
 
 # ==================================================
-#  低レベル移動＆吸着
+# 低レベルユーティリティ
 # ==================================================
 
-def move(api, x: float, y: float, z: float) -> None:
-    """ワールド座標 (x,y,z) へ PTP 直線移動。"""
+def movj(api, x, y, z):
     dType.SetPTPCmdEx(api, 0, x, y, z, 0, 1)
 
+def movl(api, x, y, z):
+    dType.SetPTPCmdEx(api, 2, x, y, z, 0, 1)
 
-def lift_to_clearance(api) -> None:
-    """現在 XY を保ったまま `clearance_z` へリフトアップ。"""
+def lift_to_clearance(api):
     pose = dType.GetPose(api)
     if abs(pose[2] - C['clearance_z']) > 0.05:
-        move(api, pose[0], pose[1], C['clearance_z'])
+        movj(api, pose[0], pose[1], C['clearance_z'])
 
-
-def suction(api, on: bool) -> None:
-    """吸着カップの真空ポンプ制御。on=True で ON。"""
+def suction(api, on):
     dType.SetEndEffectorSuctionCupEx(api, 1 if on else 0, 1)
 
 # ==================================================
-#  ステージ 1: ブロック検出→把持
+# ブロック検出→把持
 # ==================================================
 
-def wait_for_block(api) -> None:
-    """把持位置上空でフォトセンサを監視し、ブロック到来を待つ。"""
+def wait_for_block(api):
     gp = C['grab_pos']
-    wait_z = gp['z'] + C['approach_offset_z']
-    move(api, gp['x'], gp['y'], wait_z)
-    # フォトセンサ(GP2) が反応するまでポーリング
+    movj(api, gp['x'], gp['y'], gp['z'] + C['approach_offset_z'])
     while not dType.GetInfraredSensor(api, 1)[0]:
         time.sleep(0.01)
-    time.sleep(C['ir_pause'])  # ブロック静止を待つ
-    move(api, gp['x'], gp['y'], gp['z'])  # 降下して把持高さへ
+    time.sleep(C['ir_pause'])
+    movj(api, gp['x'], gp['y'], gp['z'])
 
-
-def pick_block(api) -> None:
-    """ブロックを吸着し、クリアランス高さまで戻る。"""
+def pick_block(api):
     suction(api, True)
-    time.sleep(0.15)  # 負圧安定
+    time.sleep(0.1)
     lift_to_clearance(api)
 
 # ==================================================
-#  ステージ 2: 色判定
+# 色判定
 # ==================================================
 
-def goto_sensor_and_measure(api) -> str:
-    """カラーセンサ位置へ移動して RGB を取得し、'R','G','B' を返す。"""
+def measure_color(api):
     sp = C['sensor_pos']
-    # 水平移動（Z は clearance_z のまま）
-    move(api, sp['x'], sp['y'], C['clearance_z'])
-    # Z 降下（sensor_pos.z と clearance_z が同じなら移動無し）
-    if abs(C['clearance_z'] - sp['z']) > 0.05:
-        move(api, sp['x'], sp['y'], sp['z'])
-    time.sleep(0.15)
+    movj(api, sp['x'], sp['y'], C['clearance_z'])
+    if abs(sp['z'] - C['clearance_z']) > 0.05:
+        movj(api, sp['x'], sp['y'], sp['z'])
+    time.sleep(0.12)
     rgb = [dType.GetColorSensorEx(api, i) for i in range(3)]
-    color = ['R','G','B'][rgb.index(max(rgb))]
     lift_to_clearance(api)
-    return color
+    return ['R', 'G', 'B'][rgb.index(max(rgb))]
 
 # ==================================================
-#  ステージ 3: バッファ／置き列操作
+# 座標計算
 # ==================================================
 
-def buffer_xyz(color: str, idx: int):
+def buffer_xyz(color, idx):
     col, layer = divmod(idx, 3)
     b = C['buffer_base'][color]
-    return (
-        b['x'],
-        b['y'] - col * C['buffer_interval_y'],
-        b['z'] + layer * C['buffer_interval_z']
-    )
+    return b['x'], b['y'] - col*C['buffer_interval_y'], b['z'] + layer*C['buffer_interval_z']
 
-
-def place_xyz(col: int, layer: int):
+def place_xyz(col, layer):
     p = C['place_base']
-    return (
-        p['x'],
-        p['y'] - col * C['place_interval_y'],
-        p['z'] + layer * C['place_interval_z']
-    )
+    return p['x'], p['y'] - col*C['place_interval_y'], p['z'] + layer*C['place_interval_z']
 
+# ==================================================
+# バッファ／配置オペレーション
+# ==================================================
 
-def stash(api, color: str) -> None:
-    move(api, *buffer_xyz(color, buffer_cnt[color]))
+def stash(api, color):
+    """置けない色をバッファに格納 (MOVL)。"""
+    movl(api, *buffer_xyz(color, buffer_cnt[color]))
     suction(api, False)
-    time.sleep(0.1)
+    time.sleep(0.08)
     buffer_cnt[color] += 1
     lift_to_clearance(api)
 
-
-def pull(api, color: str) -> None:
-    move(api, *buffer_xyz(color, buffer_cnt[color]-1))
+def pull(api, color):
+    """必要色をバッファから取り出し (MOVL)。"""
+    movl(api, *buffer_xyz(color, buffer_cnt[color]-1))
     suction(api, True)
-    time.sleep(0.1)
+    time.sleep(0.08)
     buffer_cnt[color] -= 1
     lift_to_clearance(api)
 
-
-def place(api, color: str, col: int) -> None:
-    move(api, *place_xyz(col, place_cnt[col]))
+def place(api, color, col):
+    """列 col にブロックを配置 (MOVL)。"""
+    movl(api, *place_xyz(col, place_cnt[col]))
     suction(api, False)
-    time.sleep(0.1)
+    time.sleep(0.08)
     place_cnt[col] += 1
     lift_to_clearance(api)
 
+# ==================================================
+# 9. バッファ掃き出し
+# ==================================================
 
-def flush(api) -> None:
+def flush(api):
+    """列が次に欲しい色をバッファから補充する。"""
     for col, seq in enumerate(NEXT_SEQ):
         while place_cnt[col] < len(seq):
             need = seq[place_cnt[col]]
+            # 在庫なければ次の列へ
             if buffer_cnt[need] == 0:
                 break
+            # バッファから取り出して配置
             pull(api, need)
             place(api, need, col)
 
 # ==================================================
-#  メインループ
+# メインループ
 # ==================================================
 
-# Dobot API のロードを開始します
 api = dType.load()
-
-# Dobot の初期設定を実施する関数を呼び出し
 init_dobot(api)
-
-# ソート処理の開始をログ出力で知らせる
 print('=== Sorting Start ===')
 
-# メインループ：ブロックの検出、把持、色判定、配置の順に処理を繰り返す
 while True:
-  # ブロックが来るまでフォトセンサで監視する
-  wait_for_block(api)
-  # ブロック到着後、吸着してブロックを把持する
-  pick_block(api)
-  # カラーセンサ位置へ移動し、ブロックの色(R,G,B)を取得する
-  color = goto_sensor_and_measure(api)
-  # 取得した色をログ出力する
-  print(color)
-  # ブロックが対応する配置先に既に必要な色があれば置くためのフラグ
-  placed = False
-  # 配置先（列）のループ。各列の順番で必要な色を確認する
-  for col, seq in enumerate(NEXT_SEQ):
-    # 対象の列でまだブロックが必要な場合、現在の配置カウントがシーケンスの長さ未満であることを確認
-    if place_cnt[col] < len(seq) and seq[place_cnt[col]] == color:
-      # 必要な色と一致した場合、ブロックをその列に配置する
-      place(api, color, col)
-      placed = True
-      # 処理が完了したのでループを抜ける
-      break
-  # どの配置先でもブロックが必要とされていなかった場合
-  if not placed:
-    # バッファに退避させる処理を行う
-    stash(api, color)
-  # バッファから必要なブロックを配置先に流し出す処理を実施する
-  flush(api)
+    # (1) ブロック検出→把持
+    wait_for_block(api)
+    pick_block(api)
+    # (2) 色判定
+    color = measure_color(api)
+    print(f'Recognized: {color}')
+    # (3) 列に直接置ける？
+    placed = False
+    for col, seq in enumerate(NEXT_SEQ):
+        if place_cnt[col] < len(seq) and seq[place_cnt[col]] == color:
+            place(api, color, col)
+            placed = True
+            break
+    # (4) 無理ならバッファへ
+    if not placed:
+        stash(api, color)
+    # (5) バッファ掃き出し
+    flush(api)
+
