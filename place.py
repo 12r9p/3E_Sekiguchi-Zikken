@@ -199,7 +199,7 @@ while True:
     pick_block(api)
     # (2) 色判定
     color = measure_color(api)
-    print(f'Recognized: {color}')
+    print(color)
     # (3) 列に直接置ける？
     placed = False
     for col, seq in enumerate(NEXT_SEQ):
