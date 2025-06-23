@@ -186,25 +186,39 @@ def flush(api) -> None:
 #  メインループ
 # ==================================================
 
-def main() -> None:
-    api = dType.load()
-    init_dobot(api)
+# Dobot API のロードを開始します
+api = dType.load()
 
-    print('=== Sorting Start ===')
-    while True:
-        wait_for_block(api)
-        pick_block(api)
-        color = goto_sensor_and_measure(api)
-        print(f'>> 判定色: {color}')
-        placed = False
-        for col, seq in enumerate(NEXT_SEQ):
-            if place_cnt[col] < len(seq) and seq[place_cnt[col]] == color:
-                place(api, color, col)
-                placed = True
-                break
-        if not placed:
-            stash(api, color)
-        flush(api)
+# Dobot の初期設定を実施する関数を呼び出し
+init_dobot(api)
 
-if __name__ == '__main__':
-    main()
+# ソート処理の開始をログ出力で知らせる
+print('=== Sorting Start ===')
+
+# メインループ：ブロックの検出、把持、色判定、配置の順に処理を繰り返す
+while True:
+  # ブロックが来るまでフォトセンサで監視する
+  wait_for_block(api)
+  # ブロック到着後、吸着してブロックを把持する
+  pick_block(api)
+  # カラーセンサ位置へ移動し、ブロックの色(R,G,B)を取得する
+  color = goto_sensor_and_measure(api)
+  # 取得した色をログ出力する
+  print(color)
+  # ブロックが対応する配置先に既に必要な色があれば置くためのフラグ
+  placed = False
+  # 配置先（列）のループ。各列の順番で必要な色を確認する
+  for col, seq in enumerate(NEXT_SEQ):
+    # 対象の列でまだブロックが必要な場合、現在の配置カウントがシーケンスの長さ未満であることを確認
+    if place_cnt[col] < len(seq) and seq[place_cnt[col]] == color:
+      # 必要な色と一致した場合、ブロックをその列に配置する
+      place(api, color, col)
+      placed = True
+      # 処理が完了したのでループを抜ける
+      break
+  # どの配置先でもブロックが必要とされていなかった場合
+  if not placed:
+    # バッファに退避させる処理を行う
+    stash(api, color)
+  # バッファから必要なブロックを配置先に流し出す処理を実施する
+  flush(api)
