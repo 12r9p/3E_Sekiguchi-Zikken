@@ -1,23 +1,39 @@
-import DobotDLL as dType
+import math
 import time
 
-# ────────────── 設定（後で外部から注入可能） ──────────────
+# ──────────── 設定（現地合わせで値をセット） ────────────
 CONFIG = {
-    # 座標は現地合わせでセットしてください
-    'grab_pos':    {'x': None, 'y': None, 'z': None},   # ブロック把持位置
-    'sensor_pos':  {'x': None, 'y': None, 'z': None},   # カラーセンサ計測位置
-    'place_base':  {'x': None, 'y': None, 'z': None},   # ブロック設置列開始位置
-    'interval_y':  None,   # Y方向間隔
-    'interval_z':  None,   # Z方向積み重ね間隔
-    'safe_z':      None,   # X,Y移動時の安全高度
+    # ブロック把持用
+    'grab_pos':    {'x': 252.5, 'y': 130, 'z': 14.4},
+    # 色判定センサ上空
+    'sensor_pos':  {'x': 191.3, 'y': 112.6, 'z': 25.1},
+    # 色別バッファの front-right 起点座標
+    'buffer_base': {
+        'R': {'x': 300, 'y': -65, 'z': -42},
+        'G': {'x': 260, 'y': -65, 'z': 42},
+        'B': {'x': 220, 'y': -65, 'z': 42},
+    },
+    # 本置き列の front-right 起点座標
+    'place_base':   {'x': 200, 'y': -150, 'z': -42},
+    # バッファ列間隔 (Y方向)
+    'buffer_interval_y': 20,
+    # バッファ積層間隔 (Z方向)
+    'buffer_interval_z': 15,
+    # 本置き列間隔 (Y方向)
+    'place_interval_y': 30,
+    # 本置き積層間隔 (Z方向)
+    'place_interval_z': 15,
+    # XY移動時の安全高度
+    'safe_z':       50,
 }
 # ────────────────────────────────────────────────────────
 
-# 各色カウント
-counters = {'R': 0, 'G': 0, 'B': 0}
+# カウンタ
+buffer_counters = {'R': 0, 'G': 0, 'B': 0}
+place_counters  = [0, 0]   # 列1, 列2
 
+# 初期化
 def init_dobot(api):
-    """Dobot の初期化設定を行う"""
     dType.SetEndEffectorParamsEx(api, 59.7, 0, 0, 1)
     dType.SetColorSensor(api, 1, 2, 1)
     dType.SetInfraredSensor(api, 1, 1, 1)
@@ -26,41 +42,34 @@ def init_dobot(api):
     dType.SetPTPCommonParamsEx(api,50,50,1)
     dType.SetPTPJumpParamsEx(api,50,100,1)
 
-
+# 基本移動関数
 def move_to(api, x, y, z, r=0):
-    """ワールド座標へ PTP 移動"""
     dType.SetPTPCmdEx(api, 0, x, y, z, r, 1)
 
-
 def move_xy_then_z(api, x, y, z):
-    """先に X,Y を安全高度へ移動し、そこから Z を降ろす"""
-    sz = CONFIG['safe_z']
-    move_to(api, x, y, sz)
+    # 1) XYを安全高度で移動 → 2) 目的Zへ降下
+    safe_z = CONFIG['safe_z']
+    move_to(api, x, y, safe_z)
     move_to(api, x, y, z)
 
-
+# 吸着／放棄
 def pick_block(api):
-    """吸着 ON → 安全高度へリフト"""
     dType.SetEndEffectorSuctionCupEx(api, 1, 1)
     time.sleep(0.5)
-    # 吸着後は安全高度に戻す
-    # 現在の X,Y 座標を取得
+    # 吸着後リフト
     pose = dType.GetPose(api)
     move_to(api, pose[0], pose[1], CONFIG['safe_z'])
-
 
 def release_block(api):
-    """吸着 OFF → 安全高度へリフト"""
     dType.SetEndEffectorSuctionCupEx(api, 0, 1)
     time.sleep(0.5)
+    # 放棄後リフト
     pose = dType.GetPose(api)
     move_to(api, pose[0], pose[1], CONFIG['safe_z'])
 
-
+# 色取得
 def get_color(api):
-    """色センサから色を読み取り、'R'/'G'/'B' を返す"""
     sp = CONFIG['sensor_pos']
-    # 安全高度経由でセンサ上空へ
     move_xy_then_z(api, sp['x'], sp['y'], sp['z'])
     time.sleep(1)
     r = dType.GetColorSensorEx(api, 0)
@@ -69,54 +78,76 @@ def get_color(api):
     mx = max(r, g, b)
     return 'R' if mx == r else 'G' if mx == g else 'B'
 
-
-def place_block(api, color):
-    """指定色の列に順次積み上げる"""
-    pb = CONFIG['place_base']
-    iy = CONFIG['interval_y']
-    iz = CONFIG['interval_z']
-    idx = counters[color]
-    # Y方向オフセットマッピング
-    offset_y = {
-        'R': +1 * iy,
-        'G':  0 * iy,
-        'B': -1 * iy
-    }[color]
-    x = pb['x']
-    y = pb['y'] + offset_y
-    z = pb['z'] + idx * iz
-    # 真上まで移動してから下降
+# ────────── バッファ配置 ──────────
+def place_in_buffer(api, color):
+    """
+    各色バッファに front-right 起点から格納。
+    - 3個で1列 -> 次の列へ
+    - 列方向は -Y 方向
+    - 積層は +Z 方向
+    """
+    idx   = buffer_counters[color]
+    col   = idx // 3
+    layer = idx % 3
+    base  = CONFIG['buffer_base'][color]
+    x = base['x']
+    y = base['y'] - col * CONFIG['buffer_interval_y']
+    z = base['z'] + layer * CONFIG['buffer_interval_z']
     move_xy_then_z(api, x, y, z)
     release_block(api)
-    counters[color] += 1
+    buffer_counters[color] += 1
+
+# ────────── 本置き列配置 ──────────
+# 2列分 帰無 as needed
+NEXT_SEQ = [['R','G','B'], ['R','B']]
+def try_flush(api):
+    for i, seq in enumerate(NEXT_SEQ):
+        while place_counters[i] < len(seq):
+            need = seq[place_counters[i]]
+            if buffer_counters[need] == 0:
+                break
+            # バッファから取り出し
+            buffer_counters[need] -= 1
+            place_in_column(api, need, i)
 
 
+def place_in_column(api, color, col_idx):
+    """
+    front-right 起点から 2列並べて積み上げ。
+    - 列方向は -Y 方向
+    - 積層は +Z 方向
+    """
+    idx  = place_counters[col_idx]
+    base = CONFIG['place_base']
+    x = base['x']
+    y = base['y'] - col_idx * CONFIG['place_interval_y']
+    z = base['z'] + idx * CONFIG['place_interval_z']
+    move_xy_then_z(api, x, y, z)
+    release_block(api)
+    place_counters[col_idx] += 1
+
+# メインループ
 def main():
     api = dType.load()
     init_dobot(api)
-
-    # ホーム位置復帰
+    # 初期リフト
     home = dType.GetPose(api)
     move_to(api, home[0], home[1], CONFIG['safe_z'])
 
     print("=== Sorting Loop Start ===")
     while True:
-        # フトロセンサーでブロック検出
         if dType.GetInfraredSensor(api, 1)[0] == 1:
-            # ブロック把持: 安全高度経由で下降
+            # 把持位置へ下降
             gp = CONFIG['grab_pos']
             move_xy_then_z(api, gp['x'], gp['y'], gp['z'])
             pick_block(api)
-
-            # 色取得 → 配置
             color = get_color(api)
             print(f"Detected: {color}")
-            place_block(api, color)
-
-            # 次の検出待ち位置へリフト
+            place_in_buffer(api, color)
+            try_flush(api)
+            # 次検出準備
             move_to(api, gp['x'], gp['y'], CONFIG['sensor_pos']['z'])
         time.sleep(0.1)
-
 
 if __name__ == '__main__':
     main()
