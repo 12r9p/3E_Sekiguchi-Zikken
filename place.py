@@ -127,27 +127,24 @@ def place_in_column(api, color, col_idx):
     place_counters[col_idx] += 1
 
 # メインループ
-def main():
-    api = dType.load()
-    init_dobot(api)
-    # 初期リフト
-    home = dType.GetPose(api)
-    move_to(api, home[0], home[1], CONFIG['safe_z'])
 
-    print("=== Sorting Loop Start ===")
-    while True:
-        if dType.GetInfraredSensor(api, 1)[0] == 1:
-            # 把持位置へ下降
-            gp = CONFIG['grab_pos']
-            move_xy_then_z(api, gp['x'], gp['y'], gp['z'])
-            pick_block(api)
-            color = get_color(api)
-            print(f"Detected: {color}")
-            place_in_buffer(api, color)
-            try_flush(api)
-            # 次検出準備
-            move_to(api, gp['x'], gp['y'], CONFIG['sensor_pos']['z'])
-        time.sleep(0.1)
+api = dType.load()
+init_dobot(api)
+# 初期リフト
+home = dType.GetPose(api)
+move_to(api, home[0], home[1], CONFIG['safe_z'])
 
-if __name__ == '__main__':
-    main()
+print("=== Sorting Loop Start ===")
+while True:
+    if dType.GetInfraredSensor(api, 1)[0] == 1:
+        # 把持位置へ下降
+        gp = CONFIG['grab_pos']
+        move_xy_then_z(api, gp['x'], gp['y'], gp['z'])
+        pick_block(api)
+        color = get_color(api)
+        print(f"Detected: {color}")
+        place_in_buffer(api, color)
+        try_flush(api)
+        # 次検出準備
+        move_to(api, gp['x'], gp['y'], CONFIG['sensor_pos']['z'])
+    time.sleep(0.1)
