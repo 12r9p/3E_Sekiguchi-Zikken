@@ -41,8 +41,9 @@ CONFIG = {
     'place_interval_y':  45.0,  # 積み列間隔
     'place_interval_z':  15.0,  # ブロック高さ
 
-    'clearance_z':       50,  # XY 移動時の安全高さ
-    'approach_offset_z': 10.0,  # 把持前に +Z 待機する量
+    'clearance_z':        50,   # XY 移動時の安全高さ
+    'senser_clearance_z': 10,   # コンベアからセンサーまでの移動高さ
+    'approach_offset_z':  10.0, # 把持前に +Z 待機する量
 
     # --- 速度 (% 指定) --------------------------------------------
     'ptp_vel_pct': 50,  # MOVJ 速度
@@ -94,6 +95,11 @@ def lift_to_clearance(api):
     if abs(pose[2] - C['clearance_z']) > 0.05:
         movj(api, pose[0], pose[1], C['clearance_z'])
 
+def lift_to_senser_clearance(api):
+    pose = dType.GetPose(api)
+    if abs(pose[2] - C['senser_clearance_z']) > 0.05:
+        movj(api, pose[0], pose[1], C['senser_clearance_z'])
+
 def suction(api, on):
     dType.SetEndEffectorSuctionCupEx(api, 1 if on else 0, 1)
 
@@ -112,7 +118,7 @@ def wait_for_block(api):
 def pick_block(api):
     suction(api, True)
     time.sleep(0.1)
-    lift_to_clearance(api)
+    lift_to_senser_clearance(api)
 
 # ==================================================
 # 色判定
@@ -120,8 +126,8 @@ def pick_block(api):
 
 def measure_color(api):
     sp = C['sensor_pos']
-    movj(api, sp['x'], sp['y'], C['clearance_z'])
-    if abs(sp['z'] - C['clearance_z']) > 0.05:
+    movj(api, sp['x'], sp['y'], C['senser_clearance_z'])
+    if abs(sp['z'] - C['senser_clearance_z']) > 0.05:
         movj(api, sp['x'], sp['y'], sp['z'])
     time.sleep(0.12)
     rgb = [dType.GetColorSensorEx(api, i) for i in range(3)]
