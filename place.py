@@ -29,7 +29,7 @@ Dobot Magician が 2 列（列0 = 青→緑→赤，列1 = 青→赤）に
 # ==================================================
 CONFIG = {
     # --- 座標 (mm) -----------------------------------------------
-    'grab_pos':    {'x': 263, 'y': 165,  'z': 16},   # ブロック吸着中心
+    'grab_pos':    {'x': 263, 'y': 165,  'z': 16},   # ブロック停止位置中心
     'sensor_pos':  {'x': 193, 'y': 111, 'z': 25},   # カラーセンサ直上
     'buffer_base': {                                         # 色別バッファ起点
         'R': {'x': 300.0, 'y': -65.0, 'z': -42.0},
@@ -220,12 +220,12 @@ while True:
 
     # (1) ブロック検出 → 把持
     gp = C['grab_pos']
-    print("把持位置に移動します: x={}, y={}, z={} (approach offset付き)".format(gp['x'], gp['y'], gp['z'] + C['approach_offset_z']))
+    print("ブロック停止位置に移動します: x={}, y={}, z={} (approach offset付き)".format(gp['x'], gp['y'], gp['z'] + C['approach_offset_z']))
     lift_to_clearance(api)
     movl(api, gp['x'], gp['y'], gp['z'] + C['approach_offset_z'])
     print("フォトセンサ待機中...")
     wait_for_block(api)
-    print("ブロック検出！ 把持開始")
+    print("ブロック検出！ 持ち上げ開始")
     pick_block(api)
 
     # (2) 色判定
