@@ -250,7 +250,7 @@ while True:
     all_columns_completed = True
     for col, seq in enumerate(NEXT_SEQ):
         if place_cnt[col] == len(seq):
-            print(f"complete: Column {col} is finished!")
+            print(col)
         else:
             all_columns_completed = False
 
