@@ -29,8 +29,8 @@ Dobot Magician が 2 列（列0 = 青→緑→赤，列1 = 青→赤）に
 # ==================================================
 CONFIG = {
     # --- 座標 (mm) -----------------------------------------------
-    'grab_pos':    {'x': 263, 'y': 169,  'z': 16},   # ブロック吸着中心
-    'sensor_pos':  {'x': 191, 'y': 112.6, 'z': 23},   # カラーセンサ直上
+    'grab_pos':    {'x': 263, 'y': 165,  'z': 16},   # ブロック吸着中心
+    'sensor_pos':  {'x': 193, 'y': 111, 'z': 25},   # カラーセンサ直上
     'buffer_base': {                                         # 色別バッファ起点
         'R': {'x': 300.0, 'y': -65.0, 'z': -42.0},
         'G': {'x': 260.0, 'y': -65.0, 'z': -42.0},
@@ -49,10 +49,10 @@ CONFIG = {
     'approach_offset_z':  10.0, # 把持前に +Z 待機する量
 
     # --- 速度 (% 指定) --------------------------------------------
-    'ptp_vel_pct': 200,  # MOVJ 速度
-    'ptp_acc_pct': 200,  # MOVJ 加速度
-    'cp_vel_pct':  150,  # MOVL 速度
-    'cp_acc_pct':  150,  # MOVL 加速度
+    'ptp_vel_pct': 500,  # MOVJ 速度
+    'ptp_acc_pct': 500,  # MOVJ 加速度
+    'cp_vel_pct':  500,  # MOVL 速度
+    'cp_acc_pct':  500,  # MOVL 加速度
 
     # --- タイミング ------------------------------------------------
     'ir_pause': 0.05,   # フォトセンサ反応後の待機 [s]
@@ -134,8 +134,9 @@ def measure_color(api):
     # Assumes robot is already at sp['x'], sp['y'] at C['senser_clearance_z']
     if abs(sp['z'] - C['senser_clearance_z']) > 0.05:
         movl(api, sp['x'], sp['y'], sp['z'])
-    time.sleep(0.12)
+    time.sleep(0.3)
     rgb = [dType.GetColorSensorEx(api, i) for i in range(3)]
+    time.sleep(0.3)
     lift_to_clearance(api)
     return ['R', 'G', 'B'][rgb.index(max(rgb))]
 
@@ -212,7 +213,7 @@ def flush(api):
 # ==================================================
 api = dType.load()
 init_dobot(api)
-print("=== ソート開始 ===")
+print("\n\n\n\n=== ソート開始 ===")
 
 while True:
     print("ループ開始 - 積層段数: {}、バッファ在庫: {}".format(place_cnt, buffer_cnt))
