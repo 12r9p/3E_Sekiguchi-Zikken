@@ -234,10 +234,19 @@ while True:
 
     # global declaration not needed at module level
     # すべての列が完成し、かつ次に検出されたブロックが 'B' であればリセット
-    if all_columns_completed_flag and color == 'B':
-        print("All columns completed and 'B' block detected. Resetting for new sequence.")
-        place_cnt = [0] * len(NEXT_SEQ)
-        all_columns_completed_flag = False
+    # または、すべての列が完成し、バッファに 'B' があればリセット
+    if all_columns_completed_flag:
+        if color == 'B':
+            print("All columns completed and 'B' block detected. Resetting for new sequence.")
+            place_cnt = [0] * len(NEXT_SEQ)
+            all_columns_completed_flag = False
+        elif buffer_cnt['B'] > 0: # If all columns completed and 'B' in buffer, reset and use buffered 'B'
+            print("All columns completed and 'B' block in buffer. Resetting for new sequence and flushing buffered 'B'.")
+            place_cnt = [0] * len(NEXT_SEQ)
+            all_columns_completed_flag = False
+            # Immediately try to flush the buffered 'B'
+            # This will be handled by the flush() call later in the loop,
+            # but we ensure the state is ready for it.
 
     # (3) 列に直接置ける？
     placed = False
