@@ -210,79 +210,78 @@ def flush(api):
 # ==================================================
 # メインループ
 # ==================================================
-
 api = dType.load()
 init_dobot(api)
-print('=== Sorting Start ===')
+print("=== ソート開始 ===")
 
 while True:
-    # global declaration not needed at module level; variables already global
-    print("Loop start - place_cnt: {}, buffer_cnt: {}".format(place_cnt, buffer_cnt))
+    print("ループ開始 - 積層段数: {}、バッファ在庫: {}".format(place_cnt, buffer_cnt))
 
-    # (1) ブロック検出→把持
+    # (1) ブロック検出 → 把持
     gp = C['grab_pos']
+    print("把持位置に移動します: x={}, y={}, z={} (approach offset付き)".format(gp['x'], gp['y'], gp['z'] + C['approach_offset_z']))
     lift_to_clearance(api)
-    # movl(api, gp['x'], gp['y'], C['clearance_z'])
     movl(api, gp['x'], gp['y'], gp['z'] + C['approach_offset_z'])
+    print("フォトセンサ待機中...")
     wait_for_block(api)
+    print("ブロック検出！ 把持開始")
     pick_block(api)
 
     # (2) 色判定
     sp = C['sensor_pos']
+    print("カラーセンサ位置に移動します: x={}, y={}, z={} (最終目的地)".format(sp['x'], sp['y'], sp['z']))
     lift_to_clearance(api)
     movl(api, sp['x'], sp['y'], C['clearance_z'])
     movl(api, sp['x'], sp['y'], sp['z'])
     color = measure_color(api)
-    print(color)
+    print("取得色: {}".format(color))
 
-    # global declaration not needed at module level
-    # すべての列が完成し、かつ次に検出されたブロックが 'B' であればリセット
-    # または、すべての列が完成し、バッファに 'B' があればリセット
+    # (2-1) 完成列リセットチェック
     if all_columns_completed_flag:
         if color == 'B':
-            print("All columns completed and 'B' block detected. Resetting for new sequence.")
+            print("全列完成済みかつ 'B' ブロック検出。新しいシーケンスにリセットします。")
             place_cnt = [0] * len(NEXT_SEQ)
             all_columns_completed_flag = False
-        elif buffer_cnt['B'] > 0: # If all columns completed and 'B' in buffer, reset and use buffered 'B'
-            print("All columns completed and 'B' block in buffer. Resetting for new sequence and flushing buffered 'B'.")
+        elif buffer_cnt['B'] > 0:
+            print("全列完成済みかつバッファに 'B' ブロックあり。新しいシーケンスにリセットし、バッファ内の 'B' を利用します。")
             place_cnt = [0] * len(NEXT_SEQ)
             all_columns_completed_flag = False
-            # Immediately try to flush the buffered 'B'
-            # This will be handled by the flush() call later in the loop,
-            # but we ensure the state is ready for it.
 
-    # (3) 列に直接置ける？
+    # (3) 列に直接置けるかチェック
     placed = False
     for col, seq in enumerate(NEXT_SEQ):
         if place_cnt[col] < len(seq) and seq[place_cnt[col]] == color:
             target_x, target_y, target_z = place_xyz(col, place_cnt[col])
+            print("列 {} に {} ブロックを直接配置します: x={}, y={}, z={}".format(col, color, target_x, target_y, C['clearance_z']))
             lift_to_clearance(api)
             movl(api, target_x, target_y, C['clearance_z'])
             place(api, color, col)
+            print("列 {} に {} ブロックを配置完了。".format(col, color))
             placed = True
             break
-    # (4) 無理ならバッファへ
+
+    # (4) 直接配置できなければバッファへ格納
     if not placed:
         target_x, target_y, target_z = buffer_xyz(color, buffer_cnt[color])
+        print("直接配置できないため、バッファに {} ブロックを格納します: x={}, y={}, z={}".format(color, target_x, target_y, C['clearance_z']))
         lift_to_clearance(api)
         movl(api, target_x, target_y, C['clearance_z'])
         stash(api, color)
+        print("バッファへ {} 格納完了。".format(color))
 
-    # (5) バッファ掃き出し
+    # (5) バッファから必要なブロックを排出（フラッシュ）
+    print("バッファの内容を確認し、必要なブロックを配置します。")
     flush(api)
 
     # (6) ユニット完成チェック
-    # ユニット完成チェック: 各列が目標シーケンス通りに積み上がっているか確認する
     all_columns_completed = True
     for col, seq in enumerate(NEXT_SEQ):
-        # 列 col の積み上げ数が目標の数に達しているかチェック
         if place_cnt[col] == len(seq):
-            print("complete: Column {} is finished!".format(col))
+            print("完了: 列 {} が完成しました！".format(col))
         else:
-            # もし未完成の列があれば、全体完成フラグを False に設定
             all_columns_completed = False
 
     if all_columns_completed:
         completed_units_count += 1
-        print("Total completed units: {}".format(completed_units_count))
-        all_columns_completed_flag = True # Set the flag for the next iteration
+        print("全ユニット完成数: {} 個".format(completed_units_count))
+        all_columns_completed_flag = True
