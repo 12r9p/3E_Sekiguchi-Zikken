@@ -2,8 +2,6 @@ import DobotDLL as dType
 import time
 
 """
-動作未確認
-
 Dobot Magician – 色分別ロボットアーム制御スクリプト（完全版）
 ===================================================================
 このスクリプトは 15 mm 角ブロックをカラーセンサで識別し，
@@ -97,7 +95,7 @@ def movl(api, x, y, z):
 def lift_to_clearance(api):
     pose = dType.GetPose(api)
     if abs(pose[2] - C['clearance_z']) > 0.05:
-        movl(api, pose[0], pose[1], C['clearance_z'])
+        movj(api, pose[0], pose[1], C['clearance_z'])
 
 def lift_to_senser_clearance(api):
     pose = dType.GetPose(api)
@@ -118,6 +116,8 @@ def wait_for_block(api):
     time.sleep(C['ir_pause'])
 
 def pick_block(api):
+    gp = C['grab_pos']
+    movl(api, gp['x'], gp['y'], gp['z'])
     suction(api, True)
     time.sleep(0.1)
     lift_to_senser_clearance(api)
@@ -127,12 +127,9 @@ def pick_block(api):
 # ==================================================
 
 def measure_color(api):
-    sp = C['sensor_pos']
-    # Assumes robot is already at sp['x'], sp['y'] at C['senser_clearance_z']
-    if abs(sp['z'] - C['senser_clearance_z']) > 0.05:
-        movj(api, sp['x'], sp['y'], sp['z'])
-    time.sleep(0.2)
+    time.sleep(0.1)
     rgb = [dType.GetColorSensorEx(api, i) for i in range(3)]
+    time.sleep(0.1)
     lift_to_clearance(api)
     return ['R', 'G', 'B'][rgb.index(max(rgb))]
 
@@ -209,44 +206,39 @@ def flush(api):
 
 api = dType.load()
 init_dobot(api)
-print('=== Sorting Start ===')
+print('=== ソーティング開始 ===')
 
 while True:
-    # global declaration not needed at module level; variables already global
-    print("Loop start - place_cnt: {}, buffer_cnt: {}".format(place_cnt, buffer_cnt))
+    print("ループ開始 - place_cnt: {}, buffer_cnt: {}".format(place_cnt, buffer_cnt))
 
-    # (1) ブロック検出→把持
+    # (1) ブロック検出 → 把持
     gp = C['grab_pos']
     lift_to_clearance(api)
-    # movl(api, gp['x'], gp['y'], C['clearance_z'])
-    
+    movl(api, gp['x'], gp['y'], gp['z'])
     wait_for_block(api)
     pick_block(api)
 
     # (2) 色判定
     sp = C['sensor_pos']
     lift_to_clearance(api)
-    
-    
+    movl(api, sp['x'], sp['y'], sp['z'])
+    color = measure_color(api)
     print(color)
 
-    # global declaration not needed at module level
-    # すべての列が完成し、かつ次に検出されたブロックが 'B' であればリセット
-    # または、すべての列が完成し、バッファに 'B' があればリセット
+    # すべての列が完成していて、次に検出されたブロックが 'B' の場合、または
+    # すべての列が完成していてバッファに 'B' がある場合、リセットします
     if all_columns_completed_flag:
         if color == 'B':
-            print("All columns completed and 'B' block detected. Resetting for new sequence.")
+            print("全ての列が完成しており、'B' ブロックが検出されました。新しいシーケンスのためにリセットします。")
             place_cnt = [0] * len(NEXT_SEQ)
             all_columns_completed_flag = False
-        elif buffer_cnt['B'] > 0: # If all columns completed and 'B' in buffer, reset and use buffered 'B'
-            print("All columns completed and 'B' block in buffer. Resetting for new sequence and flushing buffered 'B'.")
+        elif buffer_cnt['B'] > 0:  # 全列完成状態でバッファに 'B' がある場合
+            print("全ての列が完成しており、バッファに 'B' ブロックがあります。新しいシーケンスのためにリセットし、バッファ内の 'B' を利用します。")
             place_cnt = [0] * len(NEXT_SEQ)
             all_columns_completed_flag = False
-            # Immediately try to flush the buffered 'B'
-            # This will be handled by the flush() call later in the loop,
-            # but we ensure the state is ready for it.
+            # 後続の flush() 呼び出しで処理が行われます。状態を整えています。
 
-    # (3) 列に直接置ける？
+    # (3) 直接列に置けるかチェック
     placed = False
     for col, seq in enumerate(NEXT_SEQ):
         if place_cnt[col] < len(seq) and seq[place_cnt[col]] == color:
@@ -256,28 +248,29 @@ while True:
             place(api, color, col)
             placed = True
             break
-    # (4) 無理ならバッファへ
+
+    # (4) 直接列に置けない場合はバッファに格納
     if not placed:
         target_x, target_y, target_z = buffer_xyz(color, buffer_cnt[color])
         lift_to_clearance(api)
         movl(api, target_x, target_y, C['clearance_z'])
         stash(api, color)
 
-    # (5) バッファ掃き出し
+    # (5) バッファから必要なブロックを掃き出し
     flush(api)
 
     # (6) ユニット完成チェック
-    # ユニット完成チェック: 各列が目標シーケンス通りに積み上がっているか確認する
+    # 各列が目標シーケンス通りに積み上がっているか確認します
     all_columns_completed = True
     for col, seq in enumerate(NEXT_SEQ):
-        # 列 col の積み上げ数が目標の数に達しているかチェック
+        # 列 col において目標の段数に達しているかチェック
         if place_cnt[col] == len(seq):
-            print("complete: Column {} is finished!".format(col))
+            print("完了: 列 {} が完成しました！".format(col))
         else:
-            # もし未完成の列があれば、全体完成フラグを False に設定
+            # 未完成の列があれば、全体完成フラグを False にします
             all_columns_completed = False
 
     if all_columns_completed:
         completed_units_count += 1
-        print("Total completed units: {}".format(completed_units_count))
-        all_columns_completed_flag = True # Set the flag for the next iteration
+        print("完成したユニット数: {}".format(completed_units_count))
+        all_columns_completed_flag = True  # 次回のためにフラグをセット
