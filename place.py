@@ -46,10 +46,10 @@ CONFIG = {
     'approach_offset_z':  10.0, # 把持前に +Z 待機する量
 
     # --- 速度 (% 指定) --------------------------------------------
-    'ptp_vel_pct': 100,  # MOVJ 速度
-    'ptp_acc_pct': 100,  # MOVJ 加速度
-    'cp_vel_pct':  80,  # MOVL 速度
-    'cp_acc_pct':  80,  # MOVL 加速度
+    'ptp_vel_pct': 200,  # MOVJ 速度
+    'ptp_acc_pct': 200,  # MOVJ 加速度
+    'cp_vel_pct':  150,  # MOVL 速度
+    'cp_acc_pct':  150,  # MOVL 加速度
 
     # --- タイミング ------------------------------------------------
     'ir_pause': 0.05,   # フォトセンサ反応後の待機 [s]
