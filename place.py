@@ -27,7 +27,7 @@ Dobot Magician が 2 列（列0 = 青→緑→赤，列1 = 青→赤）に
 CONFIG = {
     # --- 座標 (mm) -----------------------------------------------
     'grab_pos':    {'x': 252.5, 'y': 130.0,  'z': 14.4},   # ブロック吸着中心
-    'sensor_pos':  {'x': 191.3, 'y': 112.6, 'z': 25.1},   # カラーセンサ直上
+    'sensor_pos':  {'x': 191, 'y': 112.6, 'z': 25.1},   # カラーセンサ直上
     'buffer_base': {                                         # 色別バッファ起点
         'R': {'x': 300.0, 'y': -65.0, 'z': -42.0},
         'G': {'x': 260.0, 'y': -65.0, 'z': -42.0},
@@ -36,10 +36,10 @@ CONFIG = {
     'place_base':  {'x': 200.0, 'y': -150.0, 'z': -42.0},  # 完成列起点
 
     # --- 幾何パラメータ -------------------------------------------
-    'buffer_interval_y': 20.0,  # バッファ列間中心距離
-    'buffer_interval_z': 15.0,  # ブロック高さ
+    'buffer_interval_y': 50.0,  # バッファ列間中心距離
+    'buffer_interval_z': 25,  # ブロック高さ
     'place_interval_y':  45.0,  # 積み列間隔
-    'place_interval_z':  15.0,  # ブロック高さ
+    'place_interval_z':  25,  # ブロック高さ
 
     'clearance_z':        50,   # XY 移動時の安全高さ
     'senser_clearance_z': 10,   # コンベアからセンサーまでの移動高さ
@@ -108,14 +108,14 @@ def suction(api, on):
 # ==================================================
 
 def wait_for_block(api):
-    gp = C['grab_pos']
     # Assumes robot is already at gp['x'], gp['y'] at gp['z'] + C['approach_offset_z']
     while not dType.GetInfraredSensor(api, 1)[0]:
         time.sleep(0.01)
     time.sleep(C['ir_pause'])
-    movl(api, gp['x'], gp['y'], gp['z'])
 
 def pick_block(api):
+    gp = C['grab_pos']
+    movl(api, gp['x'], gp['y'], gp['z'])
     suction(api, True)
     time.sleep(0.1)
     lift_to_senser_clearance(api)
@@ -213,7 +213,7 @@ while True:
     # (1) ブロック検出→把持
     gp = C['grab_pos']
     lift_to_clearance(api)
-    movl(api, gp['x'], gp['y'], C['clearance_z'])
+    # movl(api, gp['x'], gp['y'], C['clearance_z'])
     movl(api, gp['x'], gp['y'], gp['z'] + C['approach_offset_z'])
     wait_for_block(api)
     pick_block(api)
@@ -222,7 +222,7 @@ while True:
     sp = C['sensor_pos']
     lift_to_clearance(api)
     movl(api, sp['x'], sp['y'], C['clearance_z'])
-    movl(api, sp['x'], sp['y'], C['senser_clearance_z'])
+    movl(api, sp['x'], sp['y'], sp['z'])
     color = measure_color(api)
     print(color)
 
