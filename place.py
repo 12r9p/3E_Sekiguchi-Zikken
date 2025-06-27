@@ -213,8 +213,8 @@ while True:
 
     # (1) ブロック検出 → 把持
     gp = C['grab_pos']
-    lift_to_clearance(api)
-    movl(api, gp['x'], gp['y'], gp['z'])
+    # lift_to_clearance(api)
+    movj(api, gp['x'], gp['y'], gp['z'] + C['senser_clearance_z'])
     wait_for_block(api)
     pick_block(api)
 
