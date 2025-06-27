@@ -46,8 +46,8 @@ CONFIG = {
     'approach_offset_z':  10.0, # 把持前に +Z 待機する量
 
     # --- 速度 (% 指定) --------------------------------------------
-    'ptp_vel_pct': 80,  # MOVJ 速度
-    'ptp_acc_pct': 80,  # MOVJ 加速度
+    'ptp_vel_pct': 100,  # MOVJ 速度
+    'ptp_acc_pct': 100,  # MOVJ 加速度
     'cp_vel_pct':  80,  # MOVL 速度
     'cp_acc_pct':  80,  # MOVL 加速度
 
@@ -214,7 +214,7 @@ while True:
     gp = C['grab_pos']
     lift_to_clearance(api)
     # movl(api, gp['x'], gp['y'], C['clearance_z'])
-    movj(api, gp['x'], gp['y'], gp['z'] + C['approach_offset_z'])
+    movl(api, gp['x'], gp['y'], gp['z'] + C['approach_offset_z'])
     wait_for_block(api)
     pick_block(api)
 
