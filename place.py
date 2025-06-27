@@ -26,7 +26,7 @@ Dobot Magician が 2 列（列0 = 青→緑→赤，列1 = 青→赤）に
 # ==================================================
 CONFIG = {
     # --- 座標 (mm) -----------------------------------------------
-    'grab_pos':    {'x': 254.4, 'y': 165.6,  'z': 16},   # ブロック吸着中心
+    'grab_pos':    {'x': 254.4, 'y': 165.6,  'z': 17},   # ブロック吸着中心
     'sensor_pos':  {'x': 191, 'y': 112.6, 'z': 25.1},   # カラーセンサ直上
     'buffer_base': {                                         # 色別バッファ起点
         'R': {'x': 300.0, 'y': -65.0, 'z': -42.0},
@@ -46,10 +46,10 @@ CONFIG = {
     'approach_offset_z':  10.0, # 把持前に +Z 待機する量
 
     # --- 速度 (% 指定) --------------------------------------------
-    'ptp_vel_pct': 50,  # MOVJ 速度
-    'ptp_acc_pct': 50,  # MOVJ 加速度
-    'cp_vel_pct':  40,  # MOVL 速度
-    'cp_acc_pct':  40,  # MOVL 加速度
+    'ptp_vel_pct': 80,  # MOVJ 速度
+    'ptp_acc_pct': 80,  # MOVJ 加速度
+    'cp_vel_pct':  80,  # MOVL 速度
+    'cp_acc_pct':  80,  # MOVL 加速度
 
     # --- タイミング ------------------------------------------------
     'ir_pause': 0.05,   # フォトセンサ反応後の待機 [s]
@@ -245,4 +245,9 @@ while True:
 
     # (5) バッファ掃き出し
     flush(api)
+
+    # (6) ユニット完成チェック
+    for col, seq in enumerate(NEXT_SEQ):
+        if place_cnt[col] == len(seq):
+            print(f"complete: Column {col} is finished!")
 
