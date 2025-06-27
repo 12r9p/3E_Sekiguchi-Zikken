@@ -109,7 +109,7 @@ def suction(api, on):
 
 def wait_for_block(api):
     gp = C['grab_pos']
-    movl(api, gp['x'], gp['y'], gp['z'] + C['approach_offset_z'])
+    # Assumes robot is already at gp['x'], gp['y'] at gp['z'] + C['approach_offset_z']
     while not dType.GetInfraredSensor(api, 1)[0]:
         time.sleep(0.01)
     time.sleep(C['ir_pause'])
@@ -126,7 +126,7 @@ def pick_block(api):
 
 def measure_color(api):
     sp = C['sensor_pos']
-    movl(api, sp['x'], sp['y'], C['senser_clearance_z'])
+    # Assumes robot is already at sp['x'], sp['y'] at C['senser_clearance_z']
     if abs(sp['z'] - C['senser_clearance_z']) > 0.05:
         movl(api, sp['x'], sp['y'], sp['z'])
     time.sleep(0.12)
@@ -153,6 +153,7 @@ def place_xyz(col, layer):
 
 def stash(api, color):
     """置けない色をバッファに格納 (MOVL)。"""
+    # Assumes robot is already at buffer_xyz(color, buffer_cnt[color]) at clearance_z
     movl(api, *buffer_xyz(color, buffer_cnt[color]))
     suction(api, False)
     time.sleep(0.08)
@@ -161,6 +162,7 @@ def stash(api, color):
 
 def pull(api, color):
     """必要色をバッファから取り出し (MOVL)。"""
+    # Assumes robot is already at buffer_xyz(color, buffer_cnt[color]-1) at clearance_z
     movl(api, *buffer_xyz(color, buffer_cnt[color]-1))
     suction(api, True)
     time.sleep(0.08)
@@ -169,6 +171,7 @@ def pull(api, color):
 
 def place(api, color, col):
     """列 col にブロックを配置 (MOVL)。"""
+    # Assumes robot is already at place_xyz(col, place_cnt[col]) at clearance_z
     movl(api, *place_xyz(col, place_cnt[col]))
     suction(api, False)
     time.sleep(0.08)
@@ -188,7 +191,14 @@ def flush(api):
             if buffer_cnt[need] == 0:
                 break
             # バッファから取り出して配置
+            target_x, target_y, target_z = buffer_xyz(need, buffer_cnt[need]-1)
+            lift_to_clearance(api)
+            movl(api, target_x, target_y, C['clearance_z'])
             pull(api, need)
+
+            target_x, target_y, target_z = place_xyz(col, place_cnt[col])
+            lift_to_clearance(api)
+            movl(api, target_x, target_y, C['clearance_z'])
             place(api, need, col)
 
 # ==================================================
@@ -201,21 +211,38 @@ print('=== Sorting Start ===')
 
 while True:
     # (1) ブロック検出→把持
+    gp = C['grab_pos']
+    lift_to_clearance(api)
+    movl(api, gp['x'], gp['y'], C['clearance_z'])
+    movl(api, gp['x'], gp['y'], gp['z'] + C['approach_offset_z'])
     wait_for_block(api)
     pick_block(api)
+
     # (2) 色判定
+    sp = C['sensor_pos']
+    lift_to_clearance(api)
+    movl(api, sp['x'], sp['y'], C['clearance_z'])
+    movl(api, sp['x'], sp['y'], C['senser_clearance_z'])
     color = measure_color(api)
     print(color)
+
     # (3) 列に直接置ける？
     placed = False
     for col, seq in enumerate(NEXT_SEQ):
         if place_cnt[col] < len(seq) and seq[place_cnt[col]] == color:
+            target_x, target_y, target_z = place_xyz(col, place_cnt[col])
+            lift_to_clearance(api)
+            movl(api, target_x, target_y, C['clearance_z'])
             place(api, color, col)
             placed = True
             break
     # (4) 無理ならバッファへ
     if not placed:
+        target_x, target_y, target_z = buffer_xyz(color, buffer_cnt[color])
+        lift_to_clearance(api)
+        movl(api, target_x, target_y, C['clearance_z'])
         stash(api, color)
+
     # (5) バッファ掃き出し
     flush(api)
 
