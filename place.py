@@ -63,6 +63,8 @@ buffer_cnt = {'R': 0, 'G': 0, 'B': 0}   # 色別バッファ在庫数
 place_cnt  = [0, 0]                      # 列ごとの積層段数
 NEXT_SEQ   = [['B', 'G', 'R'],           # 列0 の目標シーケンス
               ['B', 'R']]               # 列1 の目標シーケンス
+all_columns_completed_flag = False # New global flag
+completed_units_count = 0 # New global counter
 
 
 # ==================================================
@@ -226,6 +228,13 @@ while True:
     color = measure_color(api)
     print(color)
 
+    # global declaration not needed at module level
+    # すべての列が完成し、かつ次に検出されたブロックが 'B' であればリセット
+    if all_columns_completed_flag and color == 'B':
+        print("All columns completed and 'B' block detected. Resetting for new sequence.")
+        place_cnt = [0] * len(NEXT_SEQ)
+        all_columns_completed_flag = False
+
     # (3) 列に直接置ける？
     placed = False
     for col, seq in enumerate(NEXT_SEQ):
@@ -250,16 +259,12 @@ while True:
     all_columns_completed = True
     for col, seq in enumerate(NEXT_SEQ):
         if place_cnt[col] == len(seq):
-            print(col)
+            print("complete: Column {} is finished!".format(col))
         else:
             all_columns_completed = False
 
     if all_columns_completed:
-        # すべての列が完成した場合の処理
-        # 次に検出されたブロックが 'B' であればリセット
-        if color == 'B':
-            print("All columns completed and 'B' block detected. Resetting for new sequence.")
-            # place_cnt と buffer_cnt をリセット
-            place_cnt = [0] * len(NEXT_SEQ)
-            buffer_cnt = {'R': 0, 'G': 0, 'B': 0}
+        completed_units_count += 1
+        print("Total completed units: {}".format(completed_units_count))
+        all_columns_completed_flag = True # Set the flag for the next iteration
 
