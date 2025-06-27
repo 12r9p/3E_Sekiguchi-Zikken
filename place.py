@@ -2,6 +2,9 @@ import DobotDLL as dType
 import time
 
 """
+
+動作確認済み
+
 Dobot Magician – 色分別ロボットアーム制御スクリプト（完全版）
 ===================================================================
 このスクリプトは 15 mm 角ブロックをカラーセンサで識別し，
@@ -26,8 +29,8 @@ Dobot Magician が 2 列（列0 = 青→緑→赤，列1 = 青→赤）に
 # ==================================================
 CONFIG = {
     # --- 座標 (mm) -----------------------------------------------
-    'grab_pos':    {'x': 260, 'y': 164,  'z': 15},   # ブロック吸着中心
-    'sensor_pos':  {'x': 191, 'y': 112.6, 'z': 22.5},   # カラーセンサ直上
+    'grab_pos':    {'x': 255, 'y': 171,  'z': 16},   # ブロック吸着中心
+    'sensor_pos':  {'x': 191, 'y': 112.6, 'z': 29},   # カラーセンサ直上
     'buffer_base': {                                         # 色別バッファ起点
         'R': {'x': 300.0, 'y': -65.0, 'z': -42.0},
         'G': {'x': 260.0, 'y': -65.0, 'z': -42.0},
@@ -41,7 +44,7 @@ CONFIG = {
     'place_interval_y':  45.0,  # 積み列間隔
     'place_interval_z':  24,  # ブロック高さ
 
-    'clearance_z':        40,   # XY 移動時の安全高さ
+    'clearance_z':        50,   # XY 移動時の安全高さ
     'senser_clearance_z': 10,   # コンベアからセンサーまでの移動高さ
     'approach_offset_z':  10.0, # 把持前に +Z 待機する量
 
@@ -95,7 +98,7 @@ def movl(api, x, y, z):
 def lift_to_clearance(api):
     pose = dType.GetPose(api)
     if abs(pose[2] - C['clearance_z']) > 0.05:
-        movj(api, pose[0], pose[1], C['clearance_z'])
+        movl(api, pose[0], pose[1], C['clearance_z'])
 
 def lift_to_senser_clearance(api):
     pose = dType.GetPose(api)
@@ -127,9 +130,12 @@ def pick_block(api):
 # ==================================================
 
 def measure_color(api):
-    time.sleep(0.1)
+    sp = C['sensor_pos']
+    # Assumes robot is already at sp['x'], sp['y'] at C['senser_clearance_z']
+    if abs(sp['z'] - C['senser_clearance_z']) > 0.05:
+        movl(api, sp['x'], sp['y'], sp['z'])
+    time.sleep(0.12)
     rgb = [dType.GetColorSensorEx(api, i) for i in range(3)]
-    time.sleep(0.1)
     lift_to_clearance(api)
     return ['R', 'G', 'B'][rgb.index(max(rgb))]
 
@@ -194,6 +200,7 @@ def flush(api):
             target_x, target_y, target_z = buffer_xyz(need, buffer_cnt[need]-1)
             lift_to_clearance(api)
             movl(api, target_x, target_y, C['clearance_z'])
+            pull(api, need)
 
             target_x, target_y, target_z = place_xyz(col, place_cnt[col])
             lift_to_clearance(api)
@@ -206,39 +213,45 @@ def flush(api):
 
 api = dType.load()
 init_dobot(api)
-print('=== ソーティング開始 ===')
+print('=== Sorting Start ===')
 
 while True:
-    print("ループ開始 - place_cnt: {}, buffer_cnt: {}".format(place_cnt, buffer_cnt))
+    # global declaration not needed at module level; variables already global
+    print("Loop start - place_cnt: {}, buffer_cnt: {}".format(place_cnt, buffer_cnt))
 
-    # (1) ブロック検出 → 把持
+    # (1) ブロック検出→把持
     gp = C['grab_pos']
-    # lift_to_clearance(api)
-    movj(api, gp['x'], gp['y'], C['clearance_z'])
+    lift_to_clearance(api)
+    # movl(api, gp['x'], gp['y'], C['clearance_z'])
+    movl(api, gp['x'], gp['y'], gp['z'] + C['approach_offset_z'])
     wait_for_block(api)
     pick_block(api)
 
     # (2) 色判定
     sp = C['sensor_pos']
     lift_to_clearance(api)
+    movl(api, sp['x'], sp['y'], C['clearance_z'])
     movl(api, sp['x'], sp['y'], sp['z'])
     color = measure_color(api)
     print(color)
 
-    # すべての列が完成していて、次に検出されたブロックが 'B' の場合、または
-    # すべての列が完成していてバッファに 'B' がある場合、リセットします
+    # global declaration not needed at module level
+    # すべての列が完成し、かつ次に検出されたブロックが 'B' であればリセット
+    # または、すべての列が完成し、バッファに 'B' があればリセット
     if all_columns_completed_flag:
         if color == 'B':
-            print("全ての列が完成しており、'B' ブロックが検出されました。新しいシーケンスのためにリセットします。")
+            print("All columns completed and 'B' block detected. Resetting for new sequence.")
             place_cnt = [0] * len(NEXT_SEQ)
             all_columns_completed_flag = False
-        elif buffer_cnt['B'] > 0:  # 全列完成状態でバッファに 'B' がある場合
-            print("全ての列が完成しており、バッファに 'B' ブロックがあります。新しいシーケンスのためにリセットし、バッファ内の 'B' を利用します。")
+        elif buffer_cnt['B'] > 0: # If all columns completed and 'B' in buffer, reset and use buffered 'B'
+            print("All columns completed and 'B' block in buffer. Resetting for new sequence and flushing buffered 'B'.")
             place_cnt = [0] * len(NEXT_SEQ)
             all_columns_completed_flag = False
-            # 後続の flush() 呼び出しで処理が行われます。状態を整えています。
+            # Immediately try to flush the buffered 'B'
+            # This will be handled by the flush() call later in the loop,
+            # but we ensure the state is ready for it.
 
-    # (3) 直接列に置けるかチェック
+    # (3) 列に直接置ける？
     placed = False
     for col, seq in enumerate(NEXT_SEQ):
         if place_cnt[col] < len(seq) and seq[place_cnt[col]] == color:
@@ -248,29 +261,28 @@ while True:
             place(api, color, col)
             placed = True
             break
-
-    # (4) 直接列に置けない場合はバッファに格納
+    # (4) 無理ならバッファへ
     if not placed:
         target_x, target_y, target_z = buffer_xyz(color, buffer_cnt[color])
         lift_to_clearance(api)
         movl(api, target_x, target_y, C['clearance_z'])
         stash(api, color)
 
-    # (5) バッファから必要なブロックを掃き出し
+    # (5) バッファ掃き出し
     flush(api)
 
     # (6) ユニット完成チェック
-    # 各列が目標シーケンス通りに積み上がっているか確認します
+    # ユニット完成チェック: 各列が目標シーケンス通りに積み上がっているか確認する
     all_columns_completed = True
     for col, seq in enumerate(NEXT_SEQ):
-        # 列 col において目標の段数に達しているかチェック
+        # 列 col の積み上げ数が目標の数に達しているかチェック
         if place_cnt[col] == len(seq):
-            print("完了: 列 {} が完成しました！".format(col))
+            print("complete: Column {} is finished!".format(col))
         else:
-            # 未完成の列があれば、全体完成フラグを False にします
+            # もし未完成の列があれば、全体完成フラグを False に設定
             all_columns_completed = False
 
     if all_columns_completed:
         completed_units_count += 1
-        print("完成したユニット数: {}".format(completed_units_count))
-        all_columns_completed_flag = True  # 次回のためにフラグをセット
+        print("Total completed units: {}".format(completed_units_count))
+        all_columns_completed_flag = True # Set the flag for the next iteration
