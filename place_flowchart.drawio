@@ -1,17 +1,14 @@
 <mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36" version="27.1.6">
   <diagram name="ページ1" id="ypRRnfeijynuH0-PJjUa">
-    <mxGraphModel dx="1160" dy="1255" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="3727" dy="3137" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="r9elu5c0jrWzTUIAr3A--1" value="メインループ" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
-          <mxGeometry x="20" y="1079" width="1191" height="5028" as="geometry" />
-        </mxCell>
         <mxCell id="r9elu5c0jrWzTUIAr3A--2" value="flush" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
-          <mxGeometry x="40" y="4317" width="749" height="1765" as="geometry" />
+          <mxGeometry x="-413" y="2502" width="749" height="1765" as="geometry" />
         </mxCell>
         <mxCell id="r9elu5c0jrWzTUIAr3A--3" value="pull" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
-          <mxGeometry x="244" y="5329" width="330" height="624" as="geometry" />
+          <mxGeometry x="-209" y="3514" width="330" height="624" as="geometry" />
         </mxCell>
         <mxCell id="r9elu5c0jrWzTUIAr3A--4" value="stash" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
           <mxGeometry x="397" y="3643" width="330" height="624" as="geometry" />
@@ -145,47 +142,65 @@
         <mxCell id="r9elu5c0jrWzTUIAr3A--47" value="バッファ在庫数インクリメント" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
           <mxGeometry x="432" y="4084" width="260" height="54" as="geometry" />
         </mxCell>
+        <mxCell id="r9elu5c0jrWzTUIAr3A--125" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="r9elu5c0jrWzTUIAr3A--48" target="r9elu5c0jrWzTUIAr3A--49">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="562" y="4340" />
+              <mxPoint x="360" y="4340" />
+              <mxPoint x="360" y="2430" />
+              <mxPoint x="92" y="2430" />
+              <mxPoint x="92" y="2527" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
         <mxCell id="r9elu5c0jrWzTUIAr3A--48" value="安全高さへ上昇" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
           <mxGeometry x="476" y="4188" width="172" height="54" as="geometry" />
         </mxCell>
         <mxCell id="r9elu5c0jrWzTUIAr3A--49" value="バッファ掃き出し (flush)" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
-          <mxGeometry x="443" y="4342" width="238" height="54" as="geometry" />
+          <mxGeometry x="-10" y="2527" width="238" height="54" as="geometry" />
         </mxCell>
         <mxCell id="r9elu5c0jrWzTUIAr3A--50" value="各列をループ" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
-          <mxGeometry x="485" y="4446" width="154" height="54" as="geometry" />
+          <mxGeometry x="32" y="2631" width="154" height="54" as="geometry" />
         </mxCell>
         <mxCell id="r9elu5c0jrWzTUIAr3A--51" value="列の目標積層数に達したか？" style="rhombus;strokeWidth=2;whiteSpace=wrap;" vertex="1" parent="1">
-          <mxGeometry x="489" y="4572" width="254" height="254" as="geometry" />
+          <mxGeometry x="36" y="2757" width="254" height="254" as="geometry" />
         </mxCell>
         <mxCell id="r9elu5c0jrWzTUIAr3A--52" value="次に必要な色を取得" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
-          <mxGeometry x="514" y="4899" width="204" height="54" as="geometry" />
+          <mxGeometry x="61" y="3084" width="204" height="54" as="geometry" />
         </mxCell>
         <mxCell id="r9elu5c0jrWzTUIAr3A--53" value="必要な色の在庫がバッファにあるか？" style="rhombus;strokeWidth=2;whiteSpace=wrap;" vertex="1" parent="1">
-          <mxGeometry x="282" y="5003" width="254" height="254" as="geometry" />
+          <mxGeometry x="-171" y="3188" width="254" height="254" as="geometry" />
         </mxCell>
         <mxCell id="r9elu5c0jrWzTUIAr3A--54" value="バッファからブロックを取り出し (pull)" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
-          <mxGeometry x="279" y="5354" width="260" height="54" as="geometry" />
+          <mxGeometry x="-174" y="3539" width="260" height="54" as="geometry" />
         </mxCell>
         <mxCell id="r9elu5c0jrWzTUIAr3A--55" value="バッファ座標計算" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
-          <mxGeometry x="315" y="5458" width="187" height="54" as="geometry" />
+          <mxGeometry x="-138" y="3643" width="187" height="54" as="geometry" />
         </mxCell>
         <mxCell id="r9elu5c0jrWzTUIAr3A--56" value="バッファ座標へ直線移動" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
-          <mxGeometry x="291" y="5562" width="235" height="54" as="geometry" />
+          <mxGeometry x="-162" y="3747" width="235" height="54" as="geometry" />
         </mxCell>
         <mxCell id="r9elu5c0jrWzTUIAr3A--57" value="吸着ON" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
-          <mxGeometry x="352" y="5666" width="113" height="54" as="geometry" />
+          <mxGeometry x="-101" y="3851" width="113" height="54" as="geometry" />
         </mxCell>
         <mxCell id="r9elu5c0jrWzTUIAr3A--58" value="バッファ在庫数デクリメント" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
-          <mxGeometry x="279" y="5770" width="260" height="54" as="geometry" />
+          <mxGeometry x="-174" y="3955" width="260" height="54" as="geometry" />
         </mxCell>
         <mxCell id="r9elu5c0jrWzTUIAr3A--59" value="安全高さへ上昇" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
-          <mxGeometry x="323" y="5874" width="172" height="54" as="geometry" />
+          <mxGeometry x="-130" y="4059" width="172" height="54" as="geometry" />
         </mxCell>
         <mxCell id="r9elu5c0jrWzTUIAr3A--60" value="ブロックを列に配置 (place)" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
-          <mxGeometry x="187" y="6003" width="259" height="54" as="geometry" />
+          <mxGeometry x="-266" y="4188" width="259" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="r9elu5c0jrWzTUIAr3A--124" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="r9elu5c0jrWzTUIAr3A--61" target="r9elu5c0jrWzTUIAr3A--18">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="-120" y="1131" />
+            </Array>
+          </mxGeometry>
         </mxCell>
         <mxCell id="r9elu5c0jrWzTUIAr3A--61" value="掃き出し完了" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
-          <mxGeometry x="283" y="4672" width="156" height="54" as="geometry" />
+          <mxGeometry x="-170" y="2857" width="156" height="54" as="geometry" />
         </mxCell>
         <mxCell id="r9elu5c0jrWzTUIAr3A--62" value="" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
           <mxGeometry x="959" y="1744" as="geometry" />
@@ -434,11 +449,6 @@
             <Array as="points" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="r9elu5c0jrWzTUIAr3A--107" value="" style="curved=1;startArrow=none;endArrow=block;exitX=0.5;exitY=1;entryX=0.5;entryY=0;rounded=0;" edge="1" parent="1" source="r9elu5c0jrWzTUIAr3A--48" target="r9elu5c0jrWzTUIAr3A--49">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points" />
-          </mxGeometry>
-        </mxCell>
         <mxCell id="r9elu5c0jrWzTUIAr3A--108" value="" style="curved=1;startArrow=none;endArrow=block;exitX=0.5;exitY=1;entryX=0.5;entryY=0;rounded=0;" edge="1" parent="1" source="r9elu5c0jrWzTUIAr3A--49" target="r9elu5c0jrWzTUIAr3A--50">
           <mxGeometry relative="1" as="geometry">
             <Array as="points" />
@@ -447,7 +457,7 @@
         <mxCell id="r9elu5c0jrWzTUIAr3A--109" value="" style="curved=1;startArrow=none;endArrow=block;exitX=0.84;exitY=1;entryX=0.72;entryY=0;rounded=0;" edge="1" parent="1" source="r9elu5c0jrWzTUIAr3A--50" target="r9elu5c0jrWzTUIAr3A--51">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="687" y="4536" />
+              <mxPoint x="234" y="2721" />
             </Array>
           </mxGeometry>
         </mxCell>
@@ -459,15 +469,15 @@
         <mxCell id="r9elu5c0jrWzTUIAr3A--111" value="" style="curved=1;startArrow=none;endArrow=block;exitX=0.5;exitY=0.99;entryX=1;entryY=0.13;rounded=0;" edge="1" parent="1" source="r9elu5c0jrWzTUIAr3A--52" target="r9elu5c0jrWzTUIAr3A--53">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="616" y="4978" />
+              <mxPoint x="163" y="3163" />
             </Array>
           </mxGeometry>
         </mxCell>
         <mxCell id="r9elu5c0jrWzTUIAr3A--112" value="いいえ" style="curved=1;startArrow=none;endArrow=block;exitX=0;exitY=0.03;entryX=0;entryY=0.79;rounded=0;" edge="1" parent="1" source="r9elu5c0jrWzTUIAr3A--53" target="r9elu5c0jrWzTUIAr3A--50">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="248" y="4978" />
-              <mxPoint x="248" y="4536" />
+              <mxPoint x="-205" y="3163" />
+              <mxPoint x="-205" y="2721" />
             </Array>
           </mxGeometry>
         </mxCell>
@@ -504,37 +514,29 @@
         <mxCell id="r9elu5c0jrWzTUIAr3A--119" value="" style="curved=1;startArrow=none;endArrow=block;exitX=0.5;exitY=1;entryX=0.68;entryY=0;rounded=0;" edge="1" parent="1" source="r9elu5c0jrWzTUIAr3A--59" target="r9elu5c0jrWzTUIAr3A--60">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="409" y="5978" />
+              <mxPoint x="-44" y="4163" />
             </Array>
           </mxGeometry>
         </mxCell>
         <mxCell id="r9elu5c0jrWzTUIAr3A--120" value="" style="curved=1;startArrow=none;endArrow=block;exitX=0.13;exitY=0;entryX=0;entryY=0.67;rounded=0;" edge="1" parent="1" source="r9elu5c0jrWzTUIAr3A--60" target="r9elu5c0jrWzTUIAr3A--51">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="132" y="5978" />
-              <mxPoint x="132" y="4863" />
+              <mxPoint x="-321" y="4163" />
+              <mxPoint x="-321" y="3048" />
             </Array>
           </mxGeometry>
         </mxCell>
         <mxCell id="r9elu5c0jrWzTUIAr3A--121" value="はい" style="curved=1;startArrow=none;endArrow=block;exitX=0.44;exitY=0;entryX=0.59;entryY=1;rounded=0;" edge="1" parent="1" source="r9elu5c0jrWzTUIAr3A--51" target="r9elu5c0jrWzTUIAr3A--50">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="597" y="4536" />
+              <mxPoint x="144" y="2721" />
             </Array>
           </mxGeometry>
         </mxCell>
         <mxCell id="r9elu5c0jrWzTUIAr3A--122" value="" style="curved=1;startArrow=none;endArrow=block;exitX=0.2;exitY=1;entryX=0.6;entryY=0.01;rounded=0;" edge="1" parent="1" source="r9elu5c0jrWzTUIAr3A--50" target="r9elu5c0jrWzTUIAr3A--61">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="453" y="4536" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="r9elu5c0jrWzTUIAr3A--123" value="" style="curved=1;startArrow=none;endArrow=block;exitX=0.45;exitY=0.01;entryX=0;entryY=0.71;rounded=0;" edge="1" parent="1" source="r9elu5c0jrWzTUIAr3A--61" target="r9elu5c0jrWzTUIAr3A--18">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="314" y="4536" />
-              <mxPoint x="314" y="1183" />
+              <mxPoint y="2721" />
             </Array>
           </mxGeometry>
         </mxCell>

@@ -93,12 +93,12 @@ def movl(api, x, y, z):
 def lift_to_clearance(api):
     pose = dType.GetPose(api)
     if abs(pose[2] - C['clearance_z']) > 0.05:
-        movj(api, pose[0], pose[1], C['clearance_z'])
+        movl(api, pose[0], pose[1], C['clearance_z'])
 
 def lift_to_senser_clearance(api):
     pose = dType.GetPose(api)
     if abs(pose[2] - C['senser_clearance_z']) > 0.05:
-        movj(api, pose[0], pose[1], C['senser_clearance_z'])
+        movl(api, pose[0], pose[1], C['senser_clearance_z'])
 
 def suction(api, on):
     dType.SetEndEffectorSuctionCupEx(api, 1 if on else 0, 1)
@@ -109,11 +109,11 @@ def suction(api, on):
 
 def wait_for_block(api):
     gp = C['grab_pos']
-    movj(api, gp['x'], gp['y'], gp['z'] + C['approach_offset_z'])
+    movl(api, gp['x'], gp['y'], gp['z'] + C['approach_offset_z'])
     while not dType.GetInfraredSensor(api, 1)[0]:
         time.sleep(0.01)
     time.sleep(C['ir_pause'])
-    movj(api, gp['x'], gp['y'], gp['z'])
+    movl(api, gp['x'], gp['y'], gp['z'])
 
 def pick_block(api):
     suction(api, True)
@@ -126,9 +126,9 @@ def pick_block(api):
 
 def measure_color(api):
     sp = C['sensor_pos']
-    movj(api, sp['x'], sp['y'], C['senser_clearance_z'])
+    movl(api, sp['x'], sp['y'], C['senser_clearance_z'])
     if abs(sp['z'] - C['senser_clearance_z']) > 0.05:
-        movj(api, sp['x'], sp['y'], sp['z'])
+        movl(api, sp['x'], sp['y'], sp['z'])
     time.sleep(0.12)
     rgb = [dType.GetColorSensorEx(api, i) for i in range(3)]
     lift_to_clearance(api)
