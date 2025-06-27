@@ -93,12 +93,12 @@ def movl(api, x, y, z):
 def lift_to_clearance(api):
     pose = dType.GetPose(api)
     if abs(pose[2] - C['clearance_z']) > 0.05:
-        movj(api, pose[0], pose[1], C['clearance_z'])
+        movl(api, pose[0], pose[1], C['clearance_z'])
 
 def lift_to_senser_clearance(api):
     pose = dType.GetPose(api)
     if abs(pose[2] - C['senser_clearance_z']) > 0.05:
-        movj(api, pose[0], pose[1], C['senser_clearance_z'])
+        movl(api, pose[0], pose[1], C['senser_clearance_z'])
 
 def suction(api, on):
     dType.SetEndEffectorSuctionCupEx(api, 1 if on else 0, 1)
