@@ -73,7 +73,7 @@ completed_units_count = 0 # New global counter
 
 def init_dobot(api):
     dType.SetEndEffectorParamsEx(api, 59.7, 0, 0, 1)
-    dType.SetColorSensor(api, 1, 2, 1)
+    dType.SetColorSensor(api, 0, 2, 1) # Initialize color sensor as disabled
     dType.SetInfraredSensor(api, 1, 1, 1)
     time.sleep(0.2)
     dType.SetPTPCommonParamsEx(api, C['ptp_vel_pct'], C['ptp_acc_pct'], 1)
@@ -131,8 +131,10 @@ def measure_color(api):
     # Assumes robot is already at sp['x'], sp['y'] at C['senser_clearance_z']
     if abs(sp['z'] - C['senser_clearance_z']) > 0.05:
         movl(api, sp['x'], sp['y'], sp['z'])
+    dType.SetColorSensor(api, 1, 2, 1) # Enable color sensor
     time.sleep(0.12)
     rgb = [dType.GetColorSensorEx(api, i) for i in range(3)]
+    dType.SetColorSensor(api, 0, 2, 1) # Disable color sensor
     lift_to_clearance(api)
     return ['R', 'G', 'B'][rgb.index(max(rgb))]
 
