@@ -93,12 +93,12 @@ def movl(api, x, y, z):
 def lift_to_clearance(api):
     pose = dType.GetPose(api)
     if abs(pose[2] - C['clearance_z']) > 0.05:
-        movl(api, pose[0], pose[1], C['clearance_z'])
+        movj(api, pose[0], pose[1], C['clearance_z'])
 
 def lift_to_senser_clearance(api):
     pose = dType.GetPose(api)
     if abs(pose[2] - C['senser_clearance_z']) > 0.05:
-        movl(api, pose[0], pose[1], C['senser_clearance_z'])
+        movj(api, pose[0], pose[1], C['senser_clearance_z'])
 
 def suction(api, on):
     dType.SetEndEffectorSuctionCupEx(api, 1 if on else 0, 1)
@@ -214,7 +214,7 @@ while True:
     gp = C['grab_pos']
     lift_to_clearance(api)
     # movl(api, gp['x'], gp['y'], C['clearance_z'])
-    movl(api, gp['x'], gp['y'], gp['z'] + C['approach_offset_z'])
+    movj(api, gp['x'], gp['y'], gp['z'] + C['approach_offset_z'])
     wait_for_block(api)
     pick_block(api)
 
@@ -247,7 +247,19 @@ while True:
     flush(api)
 
     # (6) ユニット完成チェック
+    all_columns_completed = True
     for col, seq in enumerate(NEXT_SEQ):
         if place_cnt[col] == len(seq):
             print(f"complete: Column {col} is finished!")
+        else:
+            all_columns_completed = False
+
+    if all_columns_completed:
+        # すべての列が完成した場合の処理
+        # 次に検出されたブロックが 'B' であればリセット
+        if color == 'B':
+            print("All columns completed and 'B' block detected. Resetting for new sequence.")
+            # place_cnt と buffer_cnt をリセット
+            place_cnt = [0] * len(NEXT_SEQ)
+            buffer_cnt = {'R': 0, 'G': 0, 'B': 0}
 
