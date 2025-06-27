@@ -2,6 +2,8 @@ import DobotDLL as dType
 import time
 
 """
+動作未確認
+
 Dobot Magician – 色分別ロボットアーム制御スクリプト（完全版）
 ===================================================================
 このスクリプトは 15 mm 角ブロックをカラーセンサで識別し，
@@ -116,8 +118,6 @@ def wait_for_block(api):
     time.sleep(C['ir_pause'])
 
 def pick_block(api):
-    gp = C['grab_pos']
-    movj(api, gp['x'], gp['y'], gp['z'])
     suction(api, True)
     time.sleep(0.1)
     lift_to_senser_clearance(api)
@@ -174,7 +174,7 @@ def pull(api, color):
 def place(api, color, col):
     """列 col にブロックを配置 (MOVL)。"""
     # Assumes robot is already at place_xyz(col, place_cnt[col]) at clearance_z
-    movj(api, *place_xyz(col, place_cnt[col]))
+    movl(api, *place_xyz(col, place_cnt[col]))
     suction(api, False)
     time.sleep(0.08)
     place_cnt[col] += 1
@@ -196,11 +196,11 @@ def flush(api):
             # バッファから取り出して配置
             target_x, target_y, target_z = buffer_xyz(need, buffer_cnt[need]-1)
             lift_to_clearance(api)
-            movj(api, target_x, target_y, C['clearance_z'])
+            movl(api, target_x, target_y, C['clearance_z'])
 
             target_x, target_y, target_z = place_xyz(col, place_cnt[col])
             lift_to_clearance(api)
-            movj(api, target_x, target_y, C['clearance_z'])
+            movl(api, target_x, target_y, C['clearance_z'])
             place(api, need, col)
 
 # ==================================================
@@ -219,16 +219,15 @@ while True:
     gp = C['grab_pos']
     lift_to_clearance(api)
     # movl(api, gp['x'], gp['y'], C['clearance_z'])
-        movl(api, gp['x'], gp['y'], gp['z'])
+    
     wait_for_block(api)
     pick_block(api)
 
     # (2) 色判定
     sp = C['sensor_pos']
     lift_to_clearance(api)
-    movj(api, sp['x'], sp['y'], C['clearance_z'])
-    movj(api, sp['x'], sp['y'], sp['z'])
-    color = measure_color(api)
+    
+    
     print(color)
 
     # global declaration not needed at module level
