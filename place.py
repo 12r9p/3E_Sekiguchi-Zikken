@@ -1,4 +1,4 @@
-import DobotDLL as dType
+# import DobotDLL as dType
 import time
 
 """
