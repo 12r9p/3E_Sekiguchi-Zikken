@@ -73,7 +73,7 @@ completed_units_count = 0 # New global counter
 
 def init_dobot(api):
     dType.SetEndEffectorParamsEx(api, 59.7, 0, 0, 1)
-    dType.SetColorSensor(api, 0, 2, 1) # Initialize color sensor as disabled
+    dType.SetColorSensor(api, 1, 2, 1)
     dType.SetInfraredSensor(api, 1, 1, 1)
     time.sleep(0.2)
     dType.SetPTPCommonParamsEx(api, C['ptp_vel_pct'], C['ptp_acc_pct'], 1)
@@ -131,10 +131,8 @@ def measure_color(api):
     # Assumes robot is already at sp['x'], sp['y'] at C['senser_clearance_z']
     if abs(sp['z'] - C['senser_clearance_z']) > 0.05:
         movl(api, sp['x'], sp['y'], sp['z'])
-    dType.SetColorSensor(api, 1, 2, 1) # Enable color sensor
     time.sleep(0.12)
     rgb = [dType.GetColorSensorEx(api, i) for i in range(3)]
-    dType.SetColorSensor(api, 0, 2, 1) # Disable color sensor
     lift_to_clearance(api)
     return ['R', 'G', 'B'][rgb.index(max(rgb))]
 
@@ -236,10 +234,19 @@ while True:
 
     # global declaration not needed at module level
     # すべての列が完成し、かつ次に検出されたブロックが 'B' であればリセット
-    if all_columns_completed_flag and color == 'B':
-        print("All columns completed and 'B' block detected. Resetting for new sequence.")
-        place_cnt = [0] * len(NEXT_SEQ)
-        all_columns_completed_flag = False
+    # または、すべての列が完成し、バッファに 'B' があればリセット
+    if all_columns_completed_flag:
+        if color == 'B':
+            print("All columns completed and 'B' block detected. Resetting for new sequence.")
+            place_cnt = [0] * len(NEXT_SEQ)
+            all_columns_completed_flag = False
+        elif buffer_cnt['B'] > 0: # If all columns completed and 'B' in buffer, reset and use buffered 'B'
+            print("All columns completed and 'B' block in buffer. Resetting for new sequence and flushing buffered 'B'.")
+            place_cnt = [0] * len(NEXT_SEQ)
+            all_columns_completed_flag = False
+            # Immediately try to flush the buffered 'B'
+            # This will be handled by the flush() call later in the loop,
+            # but we ensure the state is ready for it.
 
     # (3) 列に直接置ける？
     placed = False
@@ -276,4 +283,3 @@ while True:
         completed_units_count += 1
         print("Total completed units: {}".format(completed_units_count))
         all_columns_completed_flag = True # Set the flag for the next iteration
-
