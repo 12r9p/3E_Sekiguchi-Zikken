@@ -37,9 +37,9 @@ CONFIG = {
 
     # --- 幾何パラメータ -------------------------------------------
     'buffer_interval_y': 50.0,  # バッファ列間中心距離
-    'buffer_interval_z': 24.5,  # ブロック高さ
+    'buffer_interval_z': 24,  # ブロック高さ
     'place_interval_y':  45.0,  # 積み列間隔
-    'place_interval_z':  24.5,  # ブロック高さ
+    'place_interval_z':  24,  # ブロック高さ
 
     'clearance_z':        50,   # XY 移動時の安全高さ
     'senser_clearance_z': 10,   # コンベアからセンサーまでの移動高さ
