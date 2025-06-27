@@ -1,80 +1,94 @@
 graph TD
-    A((開始)) --> B[Dobot初期化];
+    A[処理開始] --> Init1;
 
-    subgraph Dobot初期化
-        B --> B1[エンドエフェクタパラメータ設定];
-        B1 --> B2[カラーセンサー設定];
-        B2 --> B3[赤外線センサー設定];
-        B3 --> B4[PTP共通パラメータ設定];
-        B4 --> B5{CPパラメータ設定試行};
-        B5 -- 成功 --> B6[設定完了];
-        B5 -- 失敗 (AttributeError) --> B6;
+    subgraph Initialization [0. 初期設定]
+        direction LR
+        Init1(Dobotライブラリ読み込み) --> Init2(エンドエフェクタ設定);
+        Init2 --> Init3(各種センサー設定);
+        Init3 --> Init4(動作パラメータ設定);
+        Init4 --> MainLoopStart;
     end
 
-    B6 --> C[メインループ開始];
+    subgraph MainLoop [メインループ]
+        MainLoopStart[ループ開始] --> Pick1;
+    end
 
-    subgraph メインループ
-        C --> D["ブロック検出待機 (wait_for_block)"];
-        subgraph wait_for_block
-            D --> D1[把持位置上空へ移動];
-            D1 --> D2{赤外線センサー反応?};
-            D2 -- いいえ --> D2;
-            D2 -- はい --> D3[IRセンサー反応後待機];
-            D3 --> D4[把持位置へ移動];
-        end
-        D4 --> E["ブロック把持 (pick_block)"];
-        subgraph pick_block
-            E --> E1[吸着ON];
-            E1 --> E2[センサー安全高さへ上昇];
-        end
-        E2 --> F["ブロックの色を測定 (measure_color)"];
-        subgraph measure_color
-            F --> F1[センサー位置上空へ移動];
-            F1 --> F2{センサー高さへ降下必要?};
-            F2 -- はい --> F3[センサー高さへ降下];
-            F2 -- いいえ --> F4[RGB値取得];
-            F3 --> F4;
-            F4 --> F5[安全高さへ上昇];
-            F5 --> F6[最大RGB値から色を判定し返却];
-        end
-        F6 --> G{ブロックを直接配置できるか？};
-        G -- はい --> H["ブロックを列に配置 (place)"];
-        subgraph place
-            H --> H1[配置座標計算];
-            H1 --> H2[配置座標へ直線移動];
-            H2 --> H3[吸着OFF];
-            H3 --> H4[積層段数インクリメント];
-            H4 --> H5[安全高さへ上昇];
-        end
-        H5 --> I[配置済みフラグをTrueに設定];
-        I --> J[ループを抜ける];
-        G -- いいえ --> K["ブロックをバッファに格納 (stash)"];
-        subgraph stash
-            K --> K1[バッファ座標計算];
-            K1 --> K2[バッファ座標へ直線移動];
-            K2 --> K3[吸着OFF];
-            K3 --> K4[バッファ在庫数インクリメント];
-            K4 --> K5[安全高さへ上昇];
-        end
-        K5 --> M["バッファ掃き出し (flush)"];
-        subgraph flush
-            M --> M1[各列をループ];
-            M1 --> M2{列の目標積層数に達したか？};
-            M2 -- いいえ --> M3[次に必要な色を取得];
-            M3 --> M4{必要な色の在庫がバッファにあるか？};
-            M4 -- いいえ --> M1;
-            M4 -- はい --> M5["バッファからブロックを取り出し (pull)"];
-            subgraph pull
-                M5 --> M5_1[バッファ座標計算];
-                M5_1 --> M5_2[バッファ座標へ直線移動];
-                M5_2 --> M5_3[吸着ON];
-                M5_3 --> M5_4[バッファ在庫数デクリメント];
-                M5_4 --> M5_5[安全高さへ上昇];
-            end
-            M5_5 --> M6["ブロックを列に配置 (place)"];
-            M6 --> M2;
-            M2 -- はい --> M1;
-            M1 --> M7[掃き出し完了];
-        end
-        M7 --> C;
+    subgraph Step1_Pick[1. ブロックをつかむ]
+        direction LR
+        Pick1(安全な高さへ移動) --> Pick2(ブロック停止位置の真上へ移動);
+        Pick2 --> Pick3(センサーでブロックを待つ);
+        Pick3 --> Pick4["<b>ブロック持ち上げ</b>"];
+        Pick4 --> Pick5(ブロックへ下降);
+        Pick5 --> Pick6(吸引ON);
+        Pick6 --> Pick7(次の移動の高さへ上昇);
+    end
+
+    subgraph Step2_Measure[2. ブロックの色を調べる]
+        direction LR
+        Pick7 --> Measure1(センサーの真上へ移動);
+        Measure1 --> Measure2(センサー位置へ下降);
+        Measure2 --> Measure3["<b>色判定</b>"];
+        Measure3 --> Measure4(RGB値を取得);
+        Measure4 --> Measure5(色を特定する);
+        Measure5 --> Measure6(安全な高さへ移動);
+    end
+
+    subgraph Step3_Logic[3. どうするか決める]
+        Measure6 --> Logic1{全ての列が完成しているか};
+        Logic1 -- はい --> Logic2{青いブロックか};
+        Logic2 -- はい --> Logic3[積んだ数をリセットする];
+        Logic3 --> Logic4;
+        Logic2 -- いいえ --> Logic4;
+        Logic1 -- いいえ --> Logic4;
+        Logic4{すぐに置ける列があるか};
+        Logic4 -- はい --> Place1;
+        Logic4 -- いいえ --> Stash1;
+    end
+
+    subgraph Step4a_Place[4a. 列に置く]
+        direction LR
+        Place1(置く場所の座標を計算) --> Place2(置く場所の真上へ移動);
+        Place2 --> Place3["<b>配置</b>"];
+        Place3 --> Place4(ブロックを置くために下降);
+        Place4 --> Place5(吸引OFF);
+        Place5 --> Place6(安全な高さへ移動);
+        Place6 --> Flush1;
+    end
+
+    subgraph Step4b_Stash[4b. 一時的な場所に置く]
+        direction LR
+        Stash1(一時保管場所の座標を計算) --> Stash2(一時保管場所の真上へ移動);
+        Stash2 --> Stash3["<b>一時保管</b>"];
+        Stash3 --> Stash4(ブロックを置くために下降);
+        Stash3 --> Stash5(吸引OFF);
+        Stash5 --> Stash6(安全な高さへ移動);
+        Stash6 --> Flush1;
+    end
+
+    subgraph Step5_Flush[5. 保管場所から補充する]
+        Flush1["<b>在庫補充</b>"];
+        Flush1 --> Flush2{ループ: 各列をチェック};
+        Flush2 -- チェックする列あり --> Flush3{列はまだ未完成か};
+        Flush3 -- はい --> Flush4{列に必要な色が保管場所にあるか};
+        Flush4 -- はい --> Flush5(取り出すブロックの座標を計算);
+        Flush5 --> Flush6(そのブロックの真上へ移動);
+        Flush6 --> Flush7["<b>取り出し</b>"];
+        Flush7 --> Flush8(ブロックをつかむ);
+        Flush8 --> Flush9(安全な高さへ移動);
+        Flush9 --> Flush10(置く場所の座標を計算);
+        Flush10 --> Flush11(置く場所の真上へ移動);
+        Flush11 --> Flush12["<b>配置</b>"];
+        Flush12 --> Flush13(ブロックを置く);
+        Flush13 --> Flush14(安全な高さへ移動);
+        Flush14 --> Flush3;
+        Flush4 -- いいえ --> Flush2;
+        Flush3 -- いいえ --> Flush2;
+        Flush2 -- 全ての列をチェック完了 --> Check1;
+    end
+
+    subgraph Step6_Check[6. 全て完成したか確認]
+        direction LR
+        Check1{全ての列が完成したか} -- はい --> Check2[完了フラグをONにする];
+        Check2 --> MainLoopStart;
+        Check1 -- いいえ --> MainLoopStart;
     end
