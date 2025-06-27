@@ -26,8 +26,8 @@ Dobot Magician が 2 列（列0 = 青→緑→赤，列1 = 青→赤）に
 # ==================================================
 CONFIG = {
     # --- 座標 (mm) -----------------------------------------------
-    'grab_pos':    {'x': 255, 'y': 171,  'z': 16},   # ブロック吸着中心
-    'sensor_pos':  {'x': 191, 'y': 112.6, 'z': 29},   # カラーセンサ直上
+    'grab_pos':    {'x': 260, 'y': 164,  'z': 15},   # ブロック吸着中心
+    'sensor_pos':  {'x': 191, 'y': 112.6, 'z': 22.5},   # カラーセンサ直上
     'buffer_base': {                                         # 色別バッファ起点
         'R': {'x': 300.0, 'y': -65.0, 'z': -42.0},
         'G': {'x': 260.0, 'y': -65.0, 'z': -42.0},
@@ -41,7 +41,7 @@ CONFIG = {
     'place_interval_y':  45.0,  # 積み列間隔
     'place_interval_z':  24,  # ブロック高さ
 
-    'clearance_z':        50,   # XY 移動時の安全高さ
+    'clearance_z':        40,   # XY 移動時の安全高さ
     'senser_clearance_z': 10,   # コンベアからセンサーまでの移動高さ
     'approach_offset_z':  10.0, # 把持前に +Z 待機する量
 
@@ -117,7 +117,7 @@ def wait_for_block(api):
 
 def pick_block(api):
     gp = C['grab_pos']
-    movl(api, gp['x'], gp['y'], gp['z'])
+    movj(api, gp['x'], gp['y'], gp['z'])
     suction(api, True)
     time.sleep(0.1)
     lift_to_senser_clearance(api)
@@ -130,8 +130,8 @@ def measure_color(api):
     sp = C['sensor_pos']
     # Assumes robot is already at sp['x'], sp['y'] at C['senser_clearance_z']
     if abs(sp['z'] - C['senser_clearance_z']) > 0.05:
-        movl(api, sp['x'], sp['y'], sp['z'])
-    time.sleep(0.12)
+        movj(api, sp['x'], sp['y'], sp['z'])
+    time.sleep(0.2)
     rgb = [dType.GetColorSensorEx(api, i) for i in range(3)]
     lift_to_clearance(api)
     return ['R', 'G', 'B'][rgb.index(max(rgb))]
@@ -174,7 +174,7 @@ def pull(api, color):
 def place(api, color, col):
     """列 col にブロックを配置 (MOVL)。"""
     # Assumes robot is already at place_xyz(col, place_cnt[col]) at clearance_z
-    movl(api, *place_xyz(col, place_cnt[col]))
+    movj(api, *place_xyz(col, place_cnt[col]))
     suction(api, False)
     time.sleep(0.08)
     place_cnt[col] += 1
@@ -196,12 +196,11 @@ def flush(api):
             # バッファから取り出して配置
             target_x, target_y, target_z = buffer_xyz(need, buffer_cnt[need]-1)
             lift_to_clearance(api)
-            movl(api, target_x, target_y, C['clearance_z'])
-            pull(api, need)
+            movj(api, target_x, target_y, C['clearance_z'])
 
             target_x, target_y, target_z = place_xyz(col, place_cnt[col])
             lift_to_clearance(api)
-            movl(api, target_x, target_y, C['clearance_z'])
+            movj(api, target_x, target_y, C['clearance_z'])
             place(api, need, col)
 
 # ==================================================
@@ -220,15 +219,15 @@ while True:
     gp = C['grab_pos']
     lift_to_clearance(api)
     # movl(api, gp['x'], gp['y'], C['clearance_z'])
-    movl(api, gp['x'], gp['y'], gp['z'] + C['approach_offset_z'])
+        movl(api, gp['x'], gp['y'], gp['z'])
     wait_for_block(api)
     pick_block(api)
 
     # (2) 色判定
     sp = C['sensor_pos']
     lift_to_clearance(api)
-    movl(api, sp['x'], sp['y'], C['clearance_z'])
-    movl(api, sp['x'], sp['y'], sp['z'])
+    movj(api, sp['x'], sp['y'], C['clearance_z'])
+    movj(api, sp['x'], sp['y'], sp['z'])
     color = measure_color(api)
     print(color)
 
