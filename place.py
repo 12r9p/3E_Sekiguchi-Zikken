@@ -37,9 +37,9 @@ CONFIG = {
 
     # --- 幾何パラメータ -------------------------------------------
     'buffer_interval_y': 50.0,  # バッファ列間中心距離
-    'buffer_interval_z': 25,  # ブロック高さ
+    'buffer_interval_z': 24.5,  # ブロック高さ
     'place_interval_y':  45.0,  # 積み列間隔
-    'place_interval_z':  25,  # ブロック高さ
+    'place_interval_z':  24.5,  # ブロック高さ
 
     'clearance_z':        50,   # XY 移動時の安全高さ
     'senser_clearance_z': 10,   # コンベアからセンサーまでの移動高さ
@@ -189,6 +189,7 @@ def flush(api):
     for col, seq in enumerate(NEXT_SEQ):
         while place_cnt[col] < len(seq):
             need = seq[place_cnt[col]]
+            print("  Flush - Column {}: Next need: {}, Buffer count: {}".format(col, need, buffer_cnt[need]))
             # 在庫なければ次の列へ
             if buffer_cnt[need] == 0:
                 break
@@ -212,6 +213,9 @@ init_dobot(api)
 print('=== Sorting Start ===')
 
 while True:
+    # global declaration not needed at module level; variables already global
+    print("Loop start - place_cnt: {}, buffer_cnt: {}".format(place_cnt, buffer_cnt))
+
     # (1) ブロック検出→把持
     gp = C['grab_pos']
     lift_to_clearance(api)
@@ -256,11 +260,14 @@ while True:
     flush(api)
 
     # (6) ユニット完成チェック
+    # ユニット完成チェック: 各列が目標シーケンス通りに積み上がっているか確認する
     all_columns_completed = True
     for col, seq in enumerate(NEXT_SEQ):
+        # 列 col の積み上げ数が目標の数に達しているかチェック
         if place_cnt[col] == len(seq):
             print("complete: Column {} is finished!".format(col))
         else:
+            # もし未完成の列があれば、全体完成フラグを False に設定
             all_columns_completed = False
 
     if all_columns_completed:
